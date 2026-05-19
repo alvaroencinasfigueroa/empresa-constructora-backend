@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: empresa-constructora-backend
+  datasource:
+    url: jdbc:mysql://localhost:3306/empresa_constructora?useSSL=false&serverTimezone=America/La_Paz&allowPublicKeyRetrieval=true
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+server:
+  port: 8080
