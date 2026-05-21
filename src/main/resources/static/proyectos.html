@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Proyectos - Empresa Constructora</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f4f6f8; }
+
+        header {
+            background: #1a3a5c;
+            color: white;
+            padding: 16px 32px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .container { padding: 24px 32px; }
+
+        h2 { color: #1a3a5c; margin-bottom: 16px; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        thead { background: #1a3a5c; color: white; }
+        th, td { padding: 12px 16px; text-align: left; font-size: 14px; }
+        tr:nth-child(even) { background: #f0f4f8; }
+        tr:hover { background: #dce8f5; }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .badge.ejecucion { background: #d4edda; color: #155724; }
+        .badge.planificado { background: #fff3cd; color: #856404; }
+
+        .barra-fondo {
+            background: #e0e0e0;
+            border-radius: 4px;
+            height: 10px;
+            width: 120px;
+        }
+        .barra-avance {
+            background: #1a3a5c;
+            height: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<header>🏗️ Sistema de Gestión - Empresa Constructora</header>
+
+<div class="container">
+    <h2>Proyectos</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Ciudad</th>
+            <th>Inicio</th>
+            <th>Fin estimado</th>
+            <th>Presupuesto (Bs.)</th>
+            <th>Avance</th>
+            <th>Estado</th>
+        </tr>
+        </thead>
+        <tbody id="tabla-proyectos">
+        <tr><td colspan="8">Cargando...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    fetch('http://localhost:8080/api/proyectos')
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.getElementById('tabla-proyectos');
+            tbody.innerHTML = '';
+            data.forEach(p => {
+                const esEjecucion = p.estado.toLowerCase().includes('ejecuci');
+                const badgeClass = esEjecucion ? 'ejecucion' : 'planificado';
+                const presupuesto = p.presupuestoAprobado
+                    ? p.presupuestoAprobado.toLocaleString('es-BO') : '-';
+                const avance = p.porcentajeAvance ?? 0;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${p.idProyecto}</td>
+                        <td><strong>${p.nombre}</strong></td>
+                        <td>${p.ciudad}</td>
+                        <td>${p.fechaInicio}</td>
+                        <td>${p.fechaFinEstimada ?? '-'}</td>
+                        <td>${presupuesto}</td>
+                        <td>
+                            <div class="barra-fondo">
+                                <div class="barra-avance" style="width:${avance}%"></div>
+                            </div>
+                            <small>${avance}%</small>
+                        </td>
+                        <td><span class="badge ${badgeClass}">${p.estado}</span></td>
+                    </tr>
+                `;
+            });
+        })
+        .catch(err => {
+            document.getElementById('tabla-proyectos').innerHTML =
+                '<tr><td colspan="8">Error al cargar datos</td></tr>';
+        });
+</script>
+
+</body>
+</html>
