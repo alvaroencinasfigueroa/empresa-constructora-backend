@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Empresa Constructora</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a3a5c;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            background: white;
+            border-radius: 12px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .logo h1 {
+            color: #1a3a5c;
+            font-size: 22px;
+            margin-top: 8px;
+        }
+        .logo p {
+            color: #888;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: bold;
+            color: #444;
+            margin-bottom: 6px;
+        }
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border 0.2s;
+        }
+        input:focus { border-color: #1a3a5c; }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #1a3a5c;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 8px;
+        }
+        button:hover { background: #2a5a8c; }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-top: 16px;
+            display: none;
+        }
+        .rol-badge {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 12px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+<div class="login-card">
+    <div class="logo">
+        <div style="font-size: 48px;">🏗️</div>
+        <h1>Empresa Constructora</h1>
+        <p>Sistema de Gestión Integral</p>
+    </div>
+
+    <div class="form-group">
+        <label>Usuario</label>
+        <input type="text" id="username" placeholder="Ingrese su usuario" />
+    </div>
+
+    <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="password" placeholder="Ingrese su contraseña"
+               onkeydown="if(event.key==='Enter') login()" />
+    </div>
+
+    <button onclick="login()">Ingresar al Sistema</button>
+    <div class="error" id="error-msg">Credenciales incorrectas</div>
+
+    <div class="rol-badge">
+        Sistema de Gestión v1.0 — Taller de Base de Datos 2026
+    </div>
+</div>
+
+<script>
+    // Si ya está logueado, redirigir
+    if (localStorage.getItem('token')) {
+        window.location.href = '/index.html';
+    }
+
+    function login() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+
+        if (!username || !password) return;
+
+        fetch('http://localhost:8080/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.token) {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('username', data.username);
+                localStorage.setItem('rol', data.rol);
+                localStorage.setItem('nombre', data.nombre);
+                window.location.href = '/index.html';
+            } else {
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        })
+        .catch(() => {
+            document.getElementById('error-msg').style.display = 'block';
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - Empresa Constructora</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f4f6f8; }
+        header {
+            background: #1a3a5c;
+            color: white;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 { font-size: 18px; }
+        .user-info { font-size: 13px; text-align: right; }
+        .user-info span { display: block; }
+        .rol-badge {
+            background: #2a5a8c;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-top: 4px;
+            display: inline-block;
+        }
+        .logout {
+            background: #c0392b;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-left: 16px;
+        }
+        .container { padding: 32px; }
+        h2 { color: #1a3a5c; margin-bottom: 24px; font-size: 20px; }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 28px 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+        .card .icon { font-size: 40px; margin-bottom: 12px; }
+        .card h3 { color: #1a3a5c; font-size: 15px; }
+        .card p { color: #888; font-size: 12px; margin-top: 6px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🏗️ Sistema de Gestión — Empresa Constructora</h1>
+    <div style="display:flex; align-items:center;">
+        <div class="user-info">
+            <span id="nombre-usuario">Cargando...</span>
+            <span class="rol-badge" id="rol-usuario"></span>
+        </div>
+        <button class="logout" onclick="logout()">Cerrar sesión</button>
+    </div>
+</header>
+
+<div class="container">
+    <h2>Panel Principal</h2>
+    <div class="cards" id="menu-cards"></div>
+</div>
+
+<script>
+    const token = localStorage.getItem('token');
+    const rol = localStorage.getItem('rol');
+    const nombre = localStorage.getItem('nombre');
+
+    if (!token) window.location.href = '/login.html';
+
+    document.getElementById('nombre-usuario').textContent = nombre;
+    document.getElementById('rol-usuario').textContent = rol;
+
+    // Menú según rol
+    const menus = {
+        ADMINISTRADOR: [
+            { icon: '📋', titulo: 'Proyectos', url: '/proyectos.html', desc: 'Gestión de proyectos' },
+            { icon: '👥', titulo: 'Clientes', url: '/clientes.html', desc: 'Gestión de clientes' },
+            { icon: '👷', titulo: 'Empleados', url: '/empleados.html', desc: 'Gestión de empleados' },
+            { icon: '📄', titulo: 'Contratos', url: '/contratos.html', desc: 'Gestión de contratos' },
+            { icon: '💰', titulo: 'Pagos', url: '/pagos.html', desc: 'Gestión de pagos' },
+            { icon: '🧾', titulo: 'Facturas', url: '/facturas.html', desc: 'Gestión de facturas' },
+            { icon: '🏗️', titulo: 'Maquinaria', url: '/maquinaria.html', desc: 'Control de maquinaria' },
+            { icon: '📦', titulo: 'Materiales', url: '/materiales.html', desc: 'Inventario de materiales' },
+            { icon: '📊', titulo: 'Presupuestos', url: '/presupuestos.html', desc: 'Presupuestos de obra' },
+            { icon: '📝', titulo: 'Bitácora', url: '/bitacora.html', desc: 'Registro de actividad' },
+        ],
+        DIRECTOR_OBRA: [
+            { icon: '📋', titulo: 'Proyectos', url: '/proyectos.html', desc: 'Gestión de proyectos' },
+            { icon: '📄', titulo: 'Contratos', url: '/contratos.html', desc: 'Gestión de contratos' },
+            { icon: '👥', titulo: 'Clientes', url: '/clientes.html', desc: 'Ver clientes' },
+            { icon: '👷', titulo: 'Empleados', url: '/empleados.html', desc: 'Ver empleados' },
+            { icon: '📊', titulo: 'Presupuestos', url: '/presupuestos.html', desc: 'Presupuestos de obra' },
+            { icon: '📝', titulo: 'Bitácora', url: '/bitacora.html', desc: 'Registro de actividad' },
+        ],
+        INGENIERO: [
+            { icon: '📋', titulo: 'Proyectos', url: '/proyectos.html', desc: 'Ver proyectos' },
+            { icon: '📦', titulo: 'Materiales', url: '/materiales.html', desc: 'Ver materiales' },
+            { icon: '🏗️', titulo: 'Maquinaria', url: '/maquinaria.html', desc: 'Ver maquinaria' },
+            { icon: '📊', titulo: 'Presupuestos', url: '/presupuestos.html', desc: 'Ver presupuestos' },
+        ],
+        CONTADOR: [
+            { icon: '💰', titulo: 'Pagos', url: '/pagos.html', desc: 'Gestión de pagos' },
+            { icon: '🧾', titulo: 'Facturas', url: '/facturas.html', desc: 'Gestión de facturas' },
+            { icon: '📊', titulo: 'Presupuestos', url: '/presupuestos.html', desc: 'Gestión de presupuestos' },
+            { icon: '📋', titulo: 'Proyectos', url: '/proyectos.html', desc: 'Ver proyectos' },
+            { icon: '👥', titulo: 'Clientes', url: '/clientes.html', desc: 'Ver clientes' },
+            { icon: '👷', titulo: 'Empleados', url: '/empleados.html', desc: 'Ver empleados' },
+        ],
+        RRHH: [
+            { icon: '👷', titulo: 'Empleados', url: '/empleados.html', desc: 'Gestión de empleados' },
+        ],
+        LOGISTICA: [
+            { icon: '📦', titulo: 'Materiales', url: '/materiales.html', desc: 'Gestión de materiales' },
+            { icon: '🏗️', titulo: 'Maquinaria', url: '/maquinaria.html', desc: 'Gestión de maquinaria' },
+        ],
+        CONSULTA: [
+            { icon: '📋', titulo: 'Proyectos', url: '/proyectos.html', desc: 'Ver proyectos' },
+            { icon: '👥', titulo: 'Clientes', url: '/clientes.html', desc: 'Ver clientes' },
+            { icon: '📄', titulo: 'Contratos', url: '/contratos.html', desc: 'Ver contratos' },
+        ],
+    };
+
+    const items = menus[rol] || [];
+    const cards = document.getElementById('menu-cards');
+    items.forEach(item => {
+        cards.innerHTML += `
+            <a class="card" href="${item.url}">
+                <div class="icon">${item.icon}</div>
+                <h3>${item.titulo}</h3>
+                <p>${item.desc}</p>
+            </a>
+        `;
+    });
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = '/login.html';
+    }
+</script>
+</body>
+</html>
