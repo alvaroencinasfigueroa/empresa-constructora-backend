@@ -9,6 +9,10 @@ import java.time.LocalDate;
 @Data
 public class Cliente {
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_tipo_cliente", nullable = false)
+    private TipoCliente tipoCliente;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_cliente")

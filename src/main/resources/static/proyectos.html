@@ -81,41 +81,57 @@
 </div>
 
 <script>
-    fetch('http://localhost:8080/api/proyectos')
-        .then(res => res.json())
-        .then(data => {
-            const tbody = document.getElementById('tabla-proyectos');
-            tbody.innerHTML = '';
-            data.forEach(p => {
-                const esEjecucion = p.estado.toLowerCase().includes('ejecuci');
-                const badgeClass = esEjecucion ? 'ejecucion' : 'planificado';
-                const presupuesto = p.presupuestoAprobado
-                    ? p.presupuestoAprobado.toLocaleString('es-BO') : '-';
-                const avance = p.porcentajeAvance ?? 0;
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login.html';
+    }
 
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${p.idProyecto}</td>
-                        <td><strong>${p.nombre}</strong></td>
-                        <td>${p.ciudad}</td>
-                        <td>${p.fechaInicio}</td>
-                        <td>${p.fechaFinEstimada ?? '-'}</td>
-                        <td>${presupuesto}</td>
-                        <td>
-                            <div class="barra-fondo">
-                                <div class="barra-avance" style="width:${avance}%"></div>
-                            </div>
-                            <small>${avance}%</small>
-                        </td>
-                        <td><span class="badge ${badgeClass}">${p.estado}</span></td>
-                    </tr>
-                `;
-            });
-        })
-        .catch(err => {
-            document.getElementById('tabla-proyectos').innerHTML =
-                '<tr><td colspan="8">Error al cargar datos</td></tr>';
+    fetch('http://localhost:8080/api/proyectos', {
+        headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    })
+    .then(res => {
+        if (res.status === 401 || res.status === 403) {
+            localStorage.clear();
+            window.location.href = '/login.html';
+            throw new Error('No autorizado');
+        }
+        return res.json();
+    })
+    .then(data => {
+        const tbody = document.getElementById('tabla-proyectos');
+        tbody.innerHTML = '';
+        data.forEach(p => {
+            const esEjecucion = p.estado.toLowerCase().includes('ejecuci');
+            const badgeClass = esEjecucion ? 'ejecucion' : 'planificado';
+            const presupuesto = p.presupuestoAprobado
+                ? p.presupuestoAprobado.toLocaleString('es-BO') : '-';
+            const avance = p.porcentajeAvance ?? 0;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${p.idProyecto}</td>
+                    <td><strong>${p.nombre}</strong></td>
+                    <td>${p.ciudad}</td>
+                    <td>${p.fechaInicio}</td>
+                    <td>${p.fechaFinEstimada ?? '-'}</td>
+                    <td>${presupuesto}</td>
+                    <td>
+                        <div class="barra-fondo">
+                            <div class="barra-avance" style="width:${avance}%"></div>
+                        </div>
+                        <small>${avance}%</small>
+                    </td>
+                    <td><span class="badge ${badgeClass}">${p.estado}</span></td>
+                </tr>
+            `;
         });
+    })
+    .catch(err => {
+        document.getElementById('tabla-proyectos').innerHTML =
+            '<tr><td colspan="8">Error al cargar datos</td></tr>';
+    });
 </script>
 
 </body>

@@ -39,9 +39,9 @@ public class Proyecto {
     @Column(name = "porcentaje_avance")
     private BigDecimal porcentajeAvance;
 
-    // ── relación con cliente (ya existe en la DB como id_cliente) ──
+    // ── relación con cliente (obligatorio) ──
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_cliente")
+    @JoinColumn(name = "id_cliente", nullable = false)
     private Cliente cliente;
 
     @Column(name = "estado")

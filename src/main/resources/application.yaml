@@ -8,8 +8,9 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update        # ← cambiar de "none" a "update"
     show-sql: true
+    open-in-view: false       # ← agregar esta línea
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect

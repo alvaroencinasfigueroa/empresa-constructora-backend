@@ -13,20 +13,24 @@ public class Usuario {
     @Column(name = "id_usuario")
     private Integer idUsuario;
 
-    @Column(name = "username")
+    @Column(name = "username", nullable = false, unique = true)
     private String username;
 
-    @Column(name = "password_hash")
+    @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
     @Column(name = "estado")
-    private Boolean estado;
+    private Boolean estado = true;
 
-    @ManyToOne
-    @JoinColumn(name = "id_rol")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_rol", nullable = false)
     private RolUsuario rol;
 
-    @ManyToOne
-    @JoinColumn(name = "id_empleado")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_empleado")   // nullable (sin restricción)
     private Empleado empleado;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_cliente")    // nullable
+    private Cliente cliente;
 }

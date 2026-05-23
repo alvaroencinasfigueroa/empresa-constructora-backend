@@ -19,27 +19,27 @@ public class PagoController {
 
     // Registrar pago (y marcar cuota automáticamente si se manda idCuota)
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GERENTE','ADMINISTRATIVO')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','DIRECTOR_OBRA','CONTADOR')")
     public ResponseEntity<PagoResponse> registrar(@RequestBody PagoRequest req) {
         return ResponseEntity.ok(service.registrar(req));
     }
 
     // Ver pagos de un contrato (el cliente también puede ver los suyos)
     @GetMapping("/contrato/{idContrato}")
-    @PreAuthorize("hasAnyRole('ADMIN','GERENTE','ADMINISTRATIVO','CLIENTE')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','DIRECTOR_OBRA','CONTADOR','CLIENTE')")
     public List<PagoResponse> porContrato(@PathVariable Integer idContrato) {
         return service.listarPorContrato(idContrato);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GERENTE','ADMINISTRATIVO','CLIENTE')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','DIRECTOR_OBRA','CONTADOR','CLIENTE')")
     public ResponseEntity<PagoResponse> obtener(@PathVariable Integer id) {
         return ResponseEntity.ok(service.obtenerPorId(id));
     }
 
     // Anular pago (revierte cuota a Pendiente)
     @PatchMapping("/{id}/anular")
-    @PreAuthorize("hasAnyRole('ADMIN','GERENTE')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','DIRECTOR_OBRA')")
     public ResponseEntity<PagoResponse> anular(@PathVariable Integer id) {
         return ResponseEntity.ok(service.anular(id));
     }

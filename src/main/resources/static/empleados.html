@@ -42,27 +42,46 @@
     </table>
 </div>
 <script>
-    fetch('http://localhost:8080/api/empleados')
-        .then(res => res.json())
-        .then(data => {
-            const tbody = document.getElementById('tabla-empleados');
-            tbody.innerHTML = '';
-            data.forEach(e => {
-                const activo = e.estado;
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${e.idEmpleado}</td>
-                        <td><strong>${e.nombre} ${e.apellido}</strong></td>
-                        <td>${e.ci}</td>
-                        <td>${e.telefono ?? '-'}</td>
-                        <td>${e.email ?? '-'}</td>
-                        <td>${e.fechaContratacion}</td>
-                        <td>${e.salarioBase.toLocaleString('es-BO')}</td>
-                        <td><span class="badge ${activo ? 'activo' : 'inactivo'}">${activo ? 'Activo' : 'Inactivo'}</span></td>
-                    </tr>
-                `;
-            });
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login.html';
+    }
+
+    fetch('http://localhost:8080/api/empleados', {
+        headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    })
+    .then(res => {
+        if (res.status === 401 || res.status === 403) {
+            localStorage.clear();
+            window.location.href = '/login.html';
+            throw new Error('No autorizado');
+        }
+        return res.json();
+    })
+    .then(data => {
+        const tbody = document.getElementById('tabla-empleados');
+        tbody.innerHTML = '';
+        data.forEach(e => {
+            const activo = e.estado;
+            tbody.innerHTML += `
+                <tr>
+                    <td>${e.idEmpleado}</td>
+                    <td><strong>${e.nombre} ${e.apellido}</strong></td>
+                    <td>${e.ci}</td>
+                    <td>${e.telefono ?? '-'}</td>
+                    <td>${e.email ?? '-'}</td>
+                    <td>${e.fechaContratacion}</td>
+                    <td>${e.salarioBase.toLocaleString('es-BO')}</td>
+                    <td><span class="badge ${activo ? 'activo' : 'inactivo'}">${activo ? 'Activo' : 'Inactivo'}</span></td>
+                </tr>
+            `;
         });
+    })
+    .catch(() => {
+        document.getElementById('tabla-empleados').innerHTML = '<tr><td colspan="8">Error al cargar datos</td></tr>';
+    });
 </script>
 </body>
 </html>

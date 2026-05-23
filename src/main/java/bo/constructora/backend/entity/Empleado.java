@@ -38,4 +38,22 @@ public class Empleado {
 
     @Column(name = "estado")
     private Boolean estado;
+
+    // ... campos actuales ...
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_cargo", nullable = false)
+    private Cargo cargo;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_especialidad")
+    private Especialidad especialidad;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_departamento")
+    private Departamento departamento;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_categoria")
+    private CategoriaEmpleado categoria;
 }

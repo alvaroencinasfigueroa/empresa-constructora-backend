@@ -42,27 +42,46 @@
     </table>
 </div>
 <script>
-    fetch('http://localhost:8080/api/clientes')
-        .then(res => res.json())
-        .then(data => {
-            const tbody = document.getElementById('tabla-clientes');
-            tbody.innerHTML = '';
-            data.forEach(c => {
-                const nombre = c.apellido ? `${c.nombre} ${c.apellido}` : c.nombre;
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${c.idCliente}</td>
-                        <td><strong>${nombre}</strong></td>
-                        <td>${c.rucNit}</td>
-                        <td>${c.direccion ?? '-'}</td>
-                        <td>${c.telefono ?? '-'}</td>
-                        <td>${c.email ?? '-'}</td>
-                        <td>${c.fechaRegistro}</td>
-                        <td><span class="badge ${c.estado ? 'activo' : 'inactivo'}">${c.estado ? 'Activo' : 'Inactivo'}</span></td>
-                    </tr>
-                `;
-            });
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login.html';
+    }
+
+    fetch('http://localhost:8080/api/clientes', {
+        headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    })
+    .then(res => {
+        if (res.status === 401 || res.status === 403) {
+            localStorage.clear();
+            window.location.href = '/login.html';
+            throw new Error('No autorizado');
+        }
+        return res.json();
+    })
+    .then(data => {
+        const tbody = document.getElementById('tabla-clientes');
+        tbody.innerHTML = '';
+        data.forEach(c => {
+            const nombre = c.apellido ? `${c.nombre} ${c.apellido}` : c.nombre;
+            tbody.innerHTML += `
+                <tr>
+                    <td>${c.idCliente}</td>
+                    <td><strong>${nombre}</strong></td>
+                    <td>${c.rucNit}</td>
+                    <td>${c.direccion ?? '-'}</td>
+                    <td>${c.telefono ?? '-'}</td>
+                    <td>${c.email ?? '-'}</td>
+                    <td>${c.fechaRegistro}</td>
+                    <td><span class="badge ${c.estado ? 'activo' : 'inactivo'}">${c.estado ? 'Activo' : 'Inactivo'}</span></td>
+                </tr>
+            `;
         });
+    })
+    .catch(() => {
+        document.getElementById('tabla-clientes').innerHTML = '<tr><td colspan="8">Error al cargar datos</td></tr>';
+    });
 </script>
 </body>
 </html>

@@ -19,27 +19,27 @@ public class CuotaController {
 
     // Generar plan de cuotas para un contrato
     @PostMapping("/generar")
-    @PreAuthorize("hasAnyRole('ADMIN','GERENTE','ADMINISTRATIVO')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','DIRECTOR_OBRA','CONTADOR')")
     public ResponseEntity<List<CuotaResponse>> generar(@RequestBody GenerarCuotasRequest req) {
         return ResponseEntity.ok(service.generarPlan(req));
     }
 
     // Ver cuotas de un contrato (cliente también puede ver)
     @GetMapping("/contrato/{idContrato}")
-    @PreAuthorize("hasAnyRole('ADMIN','GERENTE','ADMINISTRATIVO','CLIENTE')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','DIRECTOR_OBRA','CONTADOR','CLIENTE')")
     public List<CuotaResponse> porContrato(@PathVariable Integer idContrato) {
         return service.listarPorContrato(idContrato);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GERENTE','ADMINISTRATIVO','CLIENTE')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','DIRECTOR_OBRA','CONTADOR','CLIENTE')")
     public ResponseEntity<CuotaResponse> obtener(@PathVariable Integer id) {
         return ResponseEntity.ok(service.obtenerPorId(id));
     }
 
     // Editar monto o fecha de una cuota (renegociación)
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GERENTE')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','DIRECTOR_OBRA')")
     public ResponseEntity<CuotaResponse> actualizar(
             @PathVariable Integer id,
             @RequestBody CuotaResponse req) {
@@ -48,7 +48,7 @@ public class CuotaController {
 
     // Eliminar plan completo (solo si ninguna cuota está pagada)
     @DeleteMapping("/contrato/{idContrato}")
-    @PreAuthorize("hasAnyRole('ADMIN','GERENTE')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','DIRECTOR_OBRA')")
     public ResponseEntity<Void> eliminarPlan(@PathVariable Integer idContrato) {
         service.eliminarPlan(idContrato);
         return ResponseEntity.noContent().build();
@@ -56,7 +56,7 @@ public class CuotaController {
 
     // Resumen financiero del contrato
     @GetMapping("/resumen/{idContrato}")
-    @PreAuthorize("hasAnyRole('ADMIN','GERENTE','ADMINISTRATIVO','CLIENTE')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','DIRECTOR_OBRA','CONTADOR','CLIENTE')")
     public ResponseEntity<ResumenFinancieroResponse> resumen(@PathVariable Integer idContrato) {
         return ResponseEntity.ok(service.resumen(idContrato));
     }
