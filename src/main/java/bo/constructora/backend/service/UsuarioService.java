@@ -19,6 +19,9 @@ public class UsuarioService implements UserDetailsService {
         Usuario u = repo.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
 
+        System.out.println("Hash en loadUserByUsername: [" + u.getPasswordHash() + "]");
+        System.out.println("Longitud: " + u.getPasswordHash().length());
+
         return new org.springframework.security.core.userdetails.User(
                 u.getUsername(),
                 u.getPasswordHash(),
