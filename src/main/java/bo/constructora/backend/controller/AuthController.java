@@ -29,7 +29,15 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
         try {
-            // Autenticar
+            // ---------- DIAGNÓSTICO TEMPORAL ----------
+            Usuario u = usuarioService.findByUsername(body.get("username"));
+            System.out.println(">>> Hash en BD: " + u.getPasswordHash());
+            System.out.println(">>> Contraseña ingresada: '" + body.get("password") + "'");
+
+            boolean coincide = passwordEncoder.matches(body.get("password"), u.getPasswordHash());
+            System.out.println(">>> ¿Coinciden las contraseñas?: " + coincide);
+            // -----------------------------------------
+
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             body.get("username"),
@@ -37,27 +45,30 @@ public class AuthController {
                     )
             );
 
-            Usuario u = usuarioService.findByUsername(body.get("username"));
-            String token = jwtUtil.generateToken(u.getUsername(), u.getRol().getNombre());
+            Usuario u2 = usuarioService.findByUsername(body.get("username"));
+            String token = jwtUtil.generateToken(u2.getUsername(), u2.getRol().getNombre());
 
             // Construir el nombre completo según el tipo de usuario
             String nombreCompleto = "";
-            if (u.getEmpleado() != null) {
-                nombreCompleto = u.getEmpleado().getNombre() + " " + u.getEmpleado().getApellido();
-            } else if (u.getCliente() != null) {
-                nombreCompleto = u.getCliente().getNombre();
-                if (u.getCliente().getApellido() != null) {
-                    nombreCompleto += " " + u.getCliente().getApellido();
+            if (u2.getEmpleado() != null) {
+                nombreCompleto = u2.getEmpleado().getNombre() + " " + u2.getEmpleado().getApellido();
+            } else if (u2.getCliente() != null) {
+                nombreCompleto = u2.getCliente().getNombre();
+                if (u2.getCliente().getApellido() != null) {
+                    nombreCompleto += " " + u2.getCliente().getApellido();
                 }
             }
 
             return ResponseEntity.ok(Map.of(
                     "token", token,
-                    "username", u.getUsername(),
-                    "rol", u.getRol().getNombre(),
+                    "username", u2.getUsername(),
+                    "rol", u2.getRol().getNombre(),
                     "nombre", nombreCompleto
             ));
         } catch (AuthenticationException e) {
+            System.out.println(">>> ERROR de autenticación: " + e.getClass().getName());
+            System.out.println(">>> Mensaje: " + e.getMessage());
+            e.printStackTrace(); // Esto imprime la traza completa en consola
             return ResponseEntity.status(401)
                     .body(Map.of("error", "Credenciales incorrectas"));
         }
