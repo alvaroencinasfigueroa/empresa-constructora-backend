@@ -1,5 +1,7 @@
 package bo.constructora.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -8,24 +10,13 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "contratos")
 @Data
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Contrato {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_contrato")
     private Integer idContrato;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_cliente", nullable = false)
-    private Cliente cliente;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_proyecto", nullable = false)
-    private Proyecto proyecto;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_tipo_contrato", nullable = false)
-    private TipoContrato tipoContrato;
 
     @Column(name = "fecha_firma", nullable = false)
     private LocalDate fechaFirma;
@@ -40,5 +31,20 @@ public class Contrato {
     private LocalDate fechaFin;
 
     @Column(name = "estado", nullable = false)
-    private String estado = "Vigente"; // Vigente | Finalizado | Anulado
+    private String estado = "Vigente";
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_cliente", nullable = false)
+    @JsonIgnore
+    private Cliente cliente;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_proyecto", nullable = false)
+    @JsonIgnore
+    private Proyecto proyecto;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_tipo_contrato", nullable = false)
+    @JsonIgnore
+    private TipoContrato tipoContrato;
 }

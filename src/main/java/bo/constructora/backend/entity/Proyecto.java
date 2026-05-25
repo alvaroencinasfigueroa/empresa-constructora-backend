@@ -1,5 +1,7 @@
 package bo.constructora.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -8,6 +10,7 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "proyectos")
 @Data
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Proyecto {
 
     @Id
@@ -39,11 +42,11 @@ public class Proyecto {
     @Column(name = "porcentaje_avance")
     private BigDecimal porcentajeAvance;
 
-    // ── relación con cliente (obligatorio) ──
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_cliente", nullable = false)
-    private Cliente cliente;
-
     @Column(name = "estado")
     private String estado;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_cliente", nullable = false)
+    @JsonIgnore
+    private Cliente cliente;
 }

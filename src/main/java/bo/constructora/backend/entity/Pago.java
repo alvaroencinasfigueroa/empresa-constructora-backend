@@ -1,5 +1,7 @@
 package bo.constructora.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -8,6 +10,7 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "pagos")
 @Data
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Pago {
 
     @Id
@@ -15,11 +18,6 @@ public class Pago {
     @Column(name = "id_pago")
     private Integer idPago;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_contrato", nullable = false)
-    private Contrato contrato;
-
-    // id_factura es opcional (la factura puede emitirse después)
     @Column(name = "id_factura")
     private Integer idFactura;
 
@@ -29,13 +27,19 @@ public class Pago {
     @Column(name = "monto", nullable = false)
     private BigDecimal monto;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_metodo_pago", nullable = false)
-    private MetodoPago metodoPago;
-
     @Column(name = "numero_comprobante")
     private String numeroComprobante;
 
     @Column(name = "estado", nullable = false)
-    private String estado = "Confirmado"; // Confirmado | Anulado
+    private String estado = "Confirmado";
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_contrato", nullable = false)
+    @JsonIgnore
+    private Contrato contrato;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_metodo_pago", nullable = false)
+    @JsonIgnore
+    private MetodoPago metodoPago;
 }

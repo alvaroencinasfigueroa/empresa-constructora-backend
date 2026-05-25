@@ -22,6 +22,7 @@ public class UsuarioService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
+    @Transactional
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Usuario u = usuarioRepo.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
@@ -33,8 +34,20 @@ public class UsuarioService implements UserDetailsService {
         );
     }
 
+    @Transactional
     public Usuario findByUsername(String username) {
-        return usuarioRepo.findByUsername(username).orElseThrow();
+        Usuario u = usuarioRepo.findByUsername(username).orElseThrow();
+        // forzar carga de todas las relaciones lazy que usa el AuthController
+        u.getRol().getNombre();
+        if (u.getEmpleado() != null) {
+            u.getEmpleado().getNombre();
+            u.getEmpleado().getApellido();
+        }
+        if (u.getCliente() != null) {
+            u.getCliente().getNombre();
+            u.getCliente().getApellido();
+        }
+        return u;
     }
 
     @Transactional

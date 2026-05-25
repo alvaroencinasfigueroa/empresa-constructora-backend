@@ -2,10 +2,12 @@ package bo.constructora.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "cargos")
 @Data
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Cargo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

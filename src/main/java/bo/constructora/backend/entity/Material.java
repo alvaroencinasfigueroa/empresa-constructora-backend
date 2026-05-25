@@ -1,26 +1,30 @@
 package bo.constructora.backend.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
+import java.math.BigDecimal;
 
 @Entity
-@Table(name = "departamentos")
+@Table(name = "materiales")
 @Data
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-public class Departamento {
+public class Material {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_departamento")
-    private Integer idDepartamento;
+    @Column(name = "id_material")
+    private Integer idMaterial;
 
+    @Column(name = "nombre", nullable = false)
     private String nombre;
+
+    @Column(name = "unidad")
+    private String unidad;
+
+    @Column(name = "descripcion")
     private String descripcion;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_jefe")
-    @JsonIgnore
-    private Empleado jefe;
+    @Column(name = "precio_ref")
+    private BigDecimal precioRef;
 }

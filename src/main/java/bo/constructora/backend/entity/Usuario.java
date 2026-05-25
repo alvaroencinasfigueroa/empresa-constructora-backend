@@ -1,11 +1,14 @@
 package bo.constructora.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 
 @Entity
 @Table(name = "usuarios")
 @Data
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Usuario {
 
     @Id
@@ -24,13 +27,16 @@ public class Usuario {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_rol", nullable = false)
+    @JsonIgnore
     private RolUsuario rol;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_empleado")   // nullable (sin restricción)
+    @JoinColumn(name = "id_empleado")
+    @JsonIgnore
     private Empleado empleado;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_cliente")    // nullable
+    @JoinColumn(name = "id_cliente")
+    @JsonIgnore
     private Cliente cliente;
 }

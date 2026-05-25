@@ -1,5 +1,7 @@
 package bo.constructora.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDate;
@@ -7,11 +9,8 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "clientes")
 @Data
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Cliente {
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_tipo_cliente", nullable = false)
-    private TipoCliente tipoCliente;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,4 +40,9 @@ public class Cliente {
 
     @Column(name = "estado")
     private Boolean estado;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_tipo_cliente", nullable = false)
+    @JsonIgnore
+    private TipoCliente tipoCliente;
 }
