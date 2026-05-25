@@ -34,7 +34,6 @@ public class PagoService {
         MetodoPago metodo = metodoPagoRepo.findById(req.getIdMetodoPago())
                 .orElseThrow(() -> new IllegalArgumentException("Método de pago no encontrado."));
 
-        // Guardar el pago
         Pago pago = new Pago();
         pago.setContrato(contrato);
         pago.setFechaPago(req.getFechaPago() != null ? req.getFechaPago() : LocalDate.now());
@@ -44,7 +43,6 @@ public class PagoService {
         pago.setEstado("Confirmado");
         pago = pagoRepo.save(pago);
 
-        // Si se indicó una cuota, marcarla como Pagada
         if (req.getIdCuota() != null) {
             CuotaPago cuota = cuotaRepo.findById(req.getIdCuota())
                     .orElseThrow(() -> new IllegalArgumentException(
@@ -57,10 +55,10 @@ public class PagoService {
             }
         }
 
-        return toResponse(pago);
+        return toResponse(pagoRepo.findByIdConFetch(pago.getIdPago()).orElseThrow());
     }
 
-    // ── Anular un pago (y revertir la cuota si aplica) ───────────────────────
+    // ── Anular un pago ───────────────────────────────────────────────────────
     @Transactional
     public PagoResponse anular(Integer idPago) {
         Pago pago = pagoRepo.findById(idPago)
@@ -73,7 +71,6 @@ public class PagoService {
         pago.setEstado("Anulado");
         pagoRepo.save(pago);
 
-        // Revertir la cuota vinculada si existe
         cuotaRepo.findAll().stream()
                 .filter(c -> c.getPago() != null && c.getPago().getIdPago().equals(idPago))
                 .forEach(c -> {
@@ -83,18 +80,20 @@ public class PagoService {
                     cuotaRepo.save(c);
                 });
 
-        return toResponse(pago);
+        return toResponse(pagoRepo.findByIdConFetch(idPago).orElseThrow());
     }
 
     // ── Listar pagos de un contrato ──────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<PagoResponse> listarPorContrato(Integer idContrato) {
-        return pagoRepo.findByContrato_IdContratoOrderByFechaPagoDesc(idContrato)
+        return pagoRepo.findByContratoConFetch(idContrato)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     // ── Obtener un pago ──────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public PagoResponse obtenerPorId(Integer id) {
-        return toResponse(pagoRepo.findById(id)
+        return toResponse(pagoRepo.findByIdConFetch(id)
                 .orElseThrow(() -> new IllegalArgumentException("Pago no encontrado: " + id)));
     }
 

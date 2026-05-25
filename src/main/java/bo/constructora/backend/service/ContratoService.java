@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,7 +36,6 @@ public class ContratoService {
         c.setFechaFin(req.getFechaFin());
         c.setEstado("Vigente");
 
-        // Vincular el proyecto al cliente si no estaba ya
         Proyecto proyecto = c.getProyecto();
         if (proyecto.getCliente() == null) {
             proyecto.setCliente(c.getCliente());
@@ -48,20 +46,23 @@ public class ContratoService {
     }
 
     // ── Listar todos ─────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<ContratoResponse> listarTodos() {
-        return contratoRepo.findAll().stream()
+        return contratoRepo.findAllConFetch().stream()
                 .map(c -> toResponse(c, contratoRepo.sumPagosConfirmados(c.getIdContrato())))
                 .collect(Collectors.toList());
     }
 
-    // ── Listar por cliente (portal cliente) ──────────────────────────────────
+    // ── Listar por cliente ───────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<ContratoResponse> listarPorCliente(Integer idCliente) {
-        return contratoRepo.findByCliente_IdCliente(idCliente).stream()
+        return contratoRepo.findByClienteConFetch(idCliente).stream()
                 .map(c -> toResponse(c, contratoRepo.sumPagosConfirmados(c.getIdContrato())))
                 .collect(Collectors.toList());
     }
 
     // ── Obtener por id ───────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public ContratoResponse obtenerPorId(Integer id) {
         Contrato c = contratoRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Contrato no encontrado: " + id));

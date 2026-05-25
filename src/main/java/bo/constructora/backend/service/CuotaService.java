@@ -36,7 +36,6 @@ public class CuotaService {
 
         int n = req.getNumeroCuotas();
         BigDecimal total = contrato.getMontoTotal();
-        // División equitativa; el último centavo va a la última cuota
         BigDecimal montoCuota = total.divide(BigDecimal.valueOf(n), 2, RoundingMode.DOWN);
         BigDecimal diferencia = total.subtract(montoCuota.multiply(BigDecimal.valueOf(n)));
 
@@ -60,18 +59,20 @@ public class CuotaService {
     }
 
     // ── Listar cuotas de un contrato ─────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<CuotaResponse> listarPorContrato(Integer idContrato) {
         return cuotaRepo.findByContrato_IdContratoOrderByNumeroCuota(idContrato)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     // ── Obtener una cuota ────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public CuotaResponse obtenerPorId(Integer id) {
         return toResponse(cuotaRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Cuota no encontrada: " + id)));
     }
 
-    // ── Actualizar monto o fecha (ej: renegociación) ─────────────────────────
+    // ── Actualizar monto o fecha ─────────────────────────────────────────────
     @Transactional
     public CuotaResponse actualizar(Integer id, CuotaResponse req) {
         CuotaPago c = cuotaRepo.findById(id)
@@ -96,6 +97,7 @@ public class CuotaService {
     }
 
     // ── Resumen financiero ───────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public ResumenFinancieroResponse resumen(Integer idContrato) {
         Contrato contrato = contratoRepo.findById(idContrato).orElseThrow();
         List<CuotaPago> cuotas = cuotaRepo

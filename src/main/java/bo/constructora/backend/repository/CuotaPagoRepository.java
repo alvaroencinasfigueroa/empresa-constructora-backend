@@ -9,9 +9,9 @@ import java.util.List;
 
 public interface CuotaPagoRepository extends JpaRepository<CuotaPago, Integer> {
 
-    List<CuotaPago> findByContrato_IdContratoOrderByNumeroCuota(Integer idContrato);
+    @Query("SELECT c FROM CuotaPago c LEFT JOIN FETCH c.pago WHERE c.contrato.idContrato = :idContrato ORDER BY c.numeroCuota")
+    List<CuotaPago> findByContrato_IdContratoOrderByNumeroCuota(@Param("idContrato") Integer idContrato);
 
-    // Cuotas vencidas: fecha_vencimiento < hoy y estado = Pendiente
     @Query("""
         SELECT c FROM CuotaPago c
         WHERE c.contrato.idContrato = :idContrato
@@ -20,7 +20,6 @@ public interface CuotaPagoRepository extends JpaRepository<CuotaPago, Integer> {
         """)
     List<CuotaPago> findVencidasByContrato(@Param("idContrato") Integer idContrato);
 
-    // Marcar como Vencidas las cuotas que ya pasaron su fecha
     @Modifying
     @Query("""
         UPDATE CuotaPago c SET c.estado = 'Vencido'
