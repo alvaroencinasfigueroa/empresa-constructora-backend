@@ -42,11 +42,13 @@ public class Proyecto {
     @Column(name = "porcentaje_avance")
     private BigDecimal porcentajeAvance;
 
+    // ✅ CORREGIDO: String para manejar múltiples estados: "Planificado", "En ejecucion", etc.
     @Column(name = "estado")
     private String estado;
 
+    // ✅ CORREGIDO: @JsonIgnoreProperties permite recibir el ID del cliente desde JSON
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_cliente", nullable = false)
-    @JsonIgnore
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Cliente cliente;
 }

@@ -30,6 +30,7 @@ tr:hover { background:#dce8f5; }
 .badge-ejecucion { background:#d4edda; color:#155724; }
 .badge-planificado { background:#fff3cd; color:#856404; }
 .badge-finalizado { background:#e2e3e5; color:#383d41; }
+.badge-suspendido { background:#f8d7da; color:#721c24; }
 .barra-fondo { background:#e0e0e0; border-radius:4px; height:8px; width:100px; }
 .barra-avance { background:#1a3a5c; height:8px; border-radius:4px; }
 .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:100; align-items:center; justify-content:center; }
@@ -125,6 +126,7 @@ textarea { resize:vertical; min-height:60px; }
                 </div>
                 <div class="form-group">
                     <label>Estado</label>
+                    <!-- ✅ Valores STRING para coincidir con BD: varchar(255) -->
                     <select id="fEstado">
                         <option value="Planificado">Planificado</option>
                         <option value="En ejecucion">En ejecución</option>
@@ -153,10 +155,10 @@ let todos = [];
 const params = new URLSearchParams(location.search);
 const clienteParam = params.get('cliente');
 
+// ✅ CORREGIDO: No redirigir automáticamente, dejar que el caller maneje el error
 async function api(url, opts={}) {
   const r = await fetch(API+url, {headers:h, ...opts});
-  if (r.status===401||r.status===403) { localStorage.clear(); location.href='/login.html'; }
-  return r;
+  return r; // ← El caller decide qué hacer con 401/403/400
 }
 
 function toast(msg, err=false) {
@@ -170,6 +172,15 @@ function fmt(n) { return n ? Number(n).toLocaleString('es-BO') : '-'; }
 async function cargar() {
   const url = clienteParam ? '/proyectos/cliente/'+clienteParam : '/proyectos';
   const r = await api(url);
+
+  if (!r.ok) {
+      if (r.status===401||r.status===403) { localStorage.clear(); location.href='/login.html'; return; }
+      const errText = await r.text();
+      console.error('Error al cargar proyectos:', errText);
+      toast('Error al cargar datos', true);
+      return;
+  }
+
   todos = await r.json();
   renderizar(todos);
 }
@@ -177,9 +188,15 @@ async function cargar() {
 function renderizar(data) {
   const tbody = document.getElementById('tabla');
   if (!data.length) { tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:30px;color:#888">Sin proyectos registrados</td></tr>'; return; }
+
   tbody.innerHTML = data.map(p => {
-    const est = (p.estado||'').toLowerCase();
-    const badge = est.includes('ejecuci') ? 'ejecucion' : est.includes('finaliz') ? 'finalizado' : 'planificado';
+    // ✅ CORREGIDO: Manejar estado como STRING
+    const est = (p.estado || '').toLowerCase();
+    const badge = est.includes('ejecuc') ? 'ejecucion'
+                : est.includes('finaliz') ? 'finalizado'
+                : est.includes('suspend') ? 'suspendido'
+                : 'planificado';
+
     const avance = p.porcentajeAvance || 0;
     return `
     <tr>
@@ -210,6 +227,10 @@ function filtrar() {
 
 async function cargarClientes() {
   const r = await api('/clientes');
+  if (!r.ok) {
+      if (r.status===401||r.status===403) { localStorage.clear(); location.href='/login.html'; return; }
+      return;
+  }
   const data = await r.json();
   const sel = document.getElementById('fCliente');
   data.forEach(c => sel.innerHTML += `<option value="${c.idCliente}">${c.nombre}${c.apellido?' '+c.apellido:''}</option>`);
@@ -222,7 +243,7 @@ function abrirModal() {
   ['fInicio','fFin'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fPresupuesto').value='';
   document.getElementById('fAvance').value='0';
-  document.getElementById('fEstado').value='Planificado';
+  document.getElementById('fEstado').value='Planificado'; // ✅ Default string
   document.getElementById('fCliente').value='';
   document.getElementById('overlay').classList.add('open');
 }
@@ -231,6 +252,14 @@ function cerrarModal() { document.getElementById('overlay').classList.remove('op
 
 async function abrirEditar(id) {
   const r = await api('/proyectos/'+id);
+
+  if (!r.ok) {
+      if (r.status===401||r.status===403) { localStorage.clear(); location.href='/login.html'; return; }
+      const err = await r.text();
+      toast('Error: '+err, true);
+      return;
+  }
+
   const p = await r.json();
   document.getElementById('editId').value=p.idProyecto;
   document.getElementById('modal-titulo').textContent='Editar Proyecto';
@@ -242,13 +271,23 @@ async function abrirEditar(id) {
   document.getElementById('fFin').value=p.fechaFinEstimada||'';
   document.getElementById('fPresupuesto').value=p.presupuestoAprobado||'';
   document.getElementById('fAvance').value=p.porcentajeAvance||0;
-  document.getElementById('fEstado').value=p.estado||'Planificado';
+
+  // ✅ CORREGIDO: Asignar valor string directamente al select
+  document.getElementById('fEstado').value = p.estado || 'Planificado';
+
+  // ✅ CORREGIDO: Preseleccionar el cliente si existe
+  if (p.cliente && p.cliente.idCliente) {
+      document.getElementById('fCliente').value = p.cliente.idCliente;
+  }
+
   document.getElementById('overlay').classList.add('open');
 }
 
 async function guardar() {
   const id = document.getElementById('editId').value;
   const idCliente = document.getElementById('fCliente').value;
+
+  // ✅ CORREGIDO: Enviar estado como STRING, no boolean
   const body = {
     nombre: document.getElementById('fNombre').value,
     descripcion: document.getElementById('fDesc').value||null,
@@ -258,26 +297,62 @@ async function guardar() {
     fechaFinEstimada: document.getElementById('fFin').value||null,
     presupuestoAprobado: +document.getElementById('fPresupuesto').value||null,
     porcentajeAvance: +document.getElementById('fAvance').value||0,
-    estado: document.getElementById('fEstado').value,
+    estado: document.getElementById('fEstado').value,  // ✅ String directo: "Planificado", "En ejecucion", etc.
     cliente: idCliente ? { idCliente: +idCliente } : null
   };
+
   if (!body.nombre||!body.fechaInicio) return toast('Nombre y fecha de inicio son requeridos', true);
+  if (!body.cliente || !body.cliente.idCliente) return toast('Debe seleccionar un cliente', true);
+
   const url = id ? '/proyectos/'+id : '/proyectos';
   const method = id ? 'PUT' : 'POST';
-  const r = await api(url, {method, body:JSON.stringify(body)});
-  if (r.ok) { cerrarModal(); toast(id?'Proyecto actualizado':'Proyecto creado'); cargar(); }
-  else { const e=await r.json(); toast(e.message||'Error al guardar proyecto', true); }
+
+  try {
+    const r = await api(url, {method, body:JSON.stringify(body)});
+
+    // ✅ CORREGIDO: Manejo inteligente de respuestas
+    if (!r.ok) {
+        const errorText = await r.text();
+        console.error(`Error ${r.status}:`, errorText);
+
+        // Solo redirigir si es error de autenticación real
+        if (r.status === 401 || r.status === 403) {
+            localStorage.clear();
+            location.href='/login.html';
+            return;
+        }
+        // Para errores de validación (400), mostrar mensaje al usuario
+        return toast(errorText || 'Error al guardar proyecto', true);
+    }
+
+    // Éxito
+    cerrarModal();
+    toast(id ? 'Proyecto actualizado' : 'Proyecto creado');
+    cargar();
+
+  } catch (err) {
+    console.error('Error de red:', err);
+    toast('Error de conexión con el servidor', true);
+  }
 }
 
 async function eliminar(id) {
   if (!confirm('¿Eliminar este proyecto?')) return;
   const r = await api('/proyectos/'+id, {method:'DELETE'});
-  if (r.ok) { toast('Proyecto eliminado'); cargar(); }
-  else toast('No se puede eliminar (tiene contratos o empleados asociados)', true);
+
+  if (!r.ok) {
+      if (r.status===401||r.status===403) { localStorage.clear(); location.href='/login.html'; return; }
+      const err = await r.text();
+      return toast(err || 'No se puede eliminar', true);
+  }
+
+  toast('Proyecto eliminado');
+  cargar();
 }
 
 function verContratos(id) { location.href='/contratos.html?proyecto='+id; }
 
+// Inicialización
 cargar();
 cargarClientes();
 </script>

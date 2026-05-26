@@ -41,10 +41,13 @@ tr:hover { background:#dce8f5; }
 .form-group.full { grid-column:1/-1; }
 label { font-size:12px; font-weight:bold; color:#555; text-transform:uppercase; }
 input,select { padding:9px 11px; border:1px solid #ccc; border-radius:6px; font-size:13px; width:100%; }
+.section-divider { grid-column:1/-1; border:none; border-top:1px dashed #ccc; margin:4px 0; }
+.section-label { grid-column:1/-1; font-size:11px; font-weight:bold; color:#1a3a5c; text-transform:uppercase; letter-spacing:1px; margin-bottom:-4px; }
 .modal-footer { padding:14px 24px; border-top:1px solid #e0e0e0; display:flex; justify-content:flex-end; gap:10px; }
 .toast { position:fixed; bottom:24px; right:24px; background:#1a3a5c; color:white; padding:12px 20px; border-radius:8px; font-size:13px; display:none; z-index:999; }
 .toast.error { background:#c0392b; }
 .toast.show { display:block; }
+.credenciales-note { grid-column:1/-1; font-size:11px; color:#888; background:#f0f4f8; padding:8px 10px; border-radius:6px; }
 </style>
 </head>
 <body>
@@ -55,7 +58,6 @@ input,select { padding:9px 11px; border:1px solid #ccc; border-radius:6px; font-
         <a href="/contratos.html">Contratos</a>
     </div>
 </header>
-
 <div class="container">
     <div class="top-bar">
         <h2>👥 Clientes</h2>
@@ -64,7 +66,6 @@ input,select { padding:9px 11px; border:1px solid #ccc; border-radius:6px; font-
             <button class="btn btn-primary" onclick="abrirModal()">+ Nuevo Cliente</button>
         </div>
     </div>
-
     <table>
         <thead>
         <tr><th>#</th><th>Nombre</th><th>RUC/NIT</th><th>Dirección</th><th>Teléfono</th><th>Email</th><th>Registro</th><th>Estado</th><th>Acciones</th></tr>
@@ -82,6 +83,8 @@ input,select { padding:9px 11px; border:1px solid #ccc; border-radius:6px; font-
         <div class="modal-body">
             <input type="hidden" id="editId">
             <div class="form-grid">
+
+                <!-- Datos del cliente -->
                 <div class="form-group">
                     <label>Nombre</label>
                     <input type="text" id="fNombre" placeholder="Nombre o razón social">
@@ -122,6 +125,22 @@ input,select { padding:9px 11px; border:1px solid #ccc; border-radius:6px; font-
                         <option value="false">Inactivo</option>
                     </select>
                 </div>
+
+                <!-- Credenciales de acceso (solo al crear) -->
+                <hr class="section-divider">
+                <div class="section-label" id="credSection">🔐 Credenciales de acceso al sistema</div>
+                <div class="form-group" id="grupoUsername">
+                    <label>Usuario (username)</label>
+                    <input type="text" id="fUsername" placeholder="Ej: jperez">
+                </div>
+                <div class="form-group" id="grupoPassword">
+                    <label>Contraseña</label>
+                    <input type="password" id="fPassword" placeholder="Mínimo 6 caracteres">
+                </div>
+                <div class="credenciales-note" id="notaCred">
+                    Con estas credenciales el cliente podrá ingresar al sistema.
+                </div>
+
             </div>
         </div>
         <div class="modal-footer">
@@ -132,7 +151,6 @@ input,select { padding:9px 11px; border:1px solid #ccc; border-radius:6px; font-
 </div>
 
 <div class="toast" id="toast"></div>
-
 <script>
 const TOKEN = localStorage.getItem('token');
 if (!TOKEN) location.href='/login.html';
@@ -184,12 +202,19 @@ function filtrar() {
   renderizar(todos.filter(c => (c.nombre+' '+(c.apellido||'')+' '+c.rucNit).toLowerCase().includes(q)));
 }
 
+function mostrarCredenciales(visible) {
+  ['grupoUsername','grupoPassword','notaCred','credSection'].forEach(id => {
+    document.getElementById(id).style.display = visible ? '' : 'none';
+  });
+}
+
 function abrirModal() {
   document.getElementById('editId').value='';
   document.getElementById('modal-titulo').textContent='Nuevo Cliente';
-  ['fNombre','fApellido','fRuc','fDireccion','fTelefono','fEmail'].forEach(id=>document.getElementById(id).value='');
+  ['fNombre','fApellido','fRuc','fDireccion','fTelefono','fEmail','fUsername','fPassword'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fTipo').value='1';
   document.getElementById('fEstado').value='true';
+  mostrarCredenciales(true); // al crear, mostrar campos de credenciales
   document.getElementById('overlay').classList.add('open');
 }
 
@@ -207,28 +232,53 @@ async function abrirEditar(id) {
   document.getElementById('fTelefono').value=c.telefono||'';
   document.getElementById('fEmail').value=c.email||'';
   document.getElementById('fEstado').value=String(c.estado);
+  mostrarCredenciales(false); // al editar, ocultar credenciales (ya existen)
   document.getElementById('overlay').classList.add('open');
 }
 
 async function guardar() {
   const id = document.getElementById('editId').value;
-  const body = {
-    nombre: document.getElementById('fNombre').value,
-    apellido: document.getElementById('fApellido').value||null,
-    rucNit: document.getElementById('fRuc').value,
-    direccion: document.getElementById('fDireccion').value,
-    telefono: document.getElementById('fTelefono').value,
-    email: document.getElementById('fEmail').value||null,
-    estado: document.getElementById('fEstado').value==='true',
-    tipoCliente: { idTipoCliente: +document.getElementById('fTipo').value },
-    fechaRegistro: new Date().toISOString().split('T')[0]
-  };
-  if (!body.nombre) return toast('El nombre es requerido', true);
-  const url = id ? '/clientes/'+id : '/clientes';
-  const method = id ? 'PUT' : 'POST';
-  const r = await api(url, {method, body:JSON.stringify(body)});
-  if (r.ok) { cerrarModal(); toast(id?'Cliente actualizado':'Cliente creado'); cargar(); }
-  else { const e=await r.json(); toast(e.message||'Error al guardar cliente', true); }
+
+  if (id) {
+    // EDITAR: solo datos del cliente, sin credenciales
+    const body = {
+      nombre: document.getElementById('fNombre').value,
+      apellido: document.getElementById('fApellido').value||null,
+      rucNit: document.getElementById('fRuc').value,
+      direccion: document.getElementById('fDireccion').value,
+      telefono: document.getElementById('fTelefono').value,
+      email: document.getElementById('fEmail').value||null,
+      estado: document.getElementById('fEstado').value==='true',
+      tipoCliente: { idTipoCliente: +document.getElementById('fTipo').value },
+      fechaRegistro: new Date().toISOString().split('T')[0]
+    };
+    if (!body.nombre) return toast('El nombre es requerido', true);
+    const r = await api('/clientes/'+id, {method:'PUT', body:JSON.stringify(body)});
+    if (r.ok) { cerrarModal(); toast('Cliente actualizado'); cargar(); }
+    else { const e=await r.json(); toast(e.message||'Error al actualizar', true); }
+
+  } else {
+    // CREAR: datos del cliente + credenciales
+    const username = document.getElementById('fUsername').value.trim();
+    const password = document.getElementById('fPassword').value;
+    if (!document.getElementById('fNombre').value) return toast('El nombre es requerido', true);
+    if (!username) return toast('El usuario (username) es requerido', true);
+    if (!password || password.length < 6) return toast('La contraseña debe tener al menos 6 caracteres', true);
+
+    const body = {
+      nombre: document.getElementById('fNombre').value,
+      apellido: document.getElementById('fApellido').value||null,
+      rucNit: document.getElementById('fRuc').value,
+      direccion: document.getElementById('fDireccion').value,
+      telefono: document.getElementById('fTelefono').value,
+      email: document.getElementById('fEmail').value||null,
+      username: username,
+      password: password
+    };
+    const r = await api('/clientes', {method:'POST', body:JSON.stringify(body)});
+    if (r.ok) { cerrarModal(); toast('Cliente creado'); cargar(); }
+    else { const e=await r.json(); toast(e.message||'Error al crear cliente', true); }
+  }
 }
 
 async function eliminar(id) {
