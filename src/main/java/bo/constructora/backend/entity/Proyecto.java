@@ -2,6 +2,8 @@ package bo.constructora.backend.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -17,6 +19,9 @@ public class Proyecto {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_proyecto")
     private Integer idProyecto;
+
+    @Column(name = "id_cliente", insertable = false, updatable = false)
+    private Integer idCliente;
 
     @Column(name = "nombre")
     private String nombre;
@@ -42,13 +47,11 @@ public class Proyecto {
     @Column(name = "porcentaje_avance")
     private BigDecimal porcentajeAvance;
 
-    // ✅ CORREGIDO: String para manejar múltiples estados: "Planificado", "En ejecucion", etc.
     @Column(name = "estado")
     private String estado;
 
-    // ✅ CORREGIDO: @JsonIgnoreProperties permite recibir el ID del cliente desde JSON
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_cliente", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnore
     private Cliente cliente;
 }

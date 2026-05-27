@@ -1,4 +1,7 @@
 package bo.constructora.backend.repository;
 
-public interface CargoRepository {
+import bo.constructora.backend.entity.Cargo;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CargoRepository extends JpaRepository<Cargo, Integer> {
 }

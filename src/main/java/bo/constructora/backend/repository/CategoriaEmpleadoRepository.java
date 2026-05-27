@@ -1,4 +1,7 @@
 package bo.constructora.backend.repository;
 
-public interface CategoriaEmpleadoRepository {
+import bo.constructora.backend.entity.CategoriaEmpleado;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CategoriaEmpleadoRepository extends JpaRepository<CategoriaEmpleado, Integer> {
 }

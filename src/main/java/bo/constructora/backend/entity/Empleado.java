@@ -42,6 +42,19 @@ public class Empleado {
     @Column(name = "estado")
     private Boolean estado;
 
+    // IDs planos de solo lectura para el frontend
+    @Column(name = "id_cargo", insertable = false, updatable = false)
+    private Integer idCargo;
+
+    @Column(name = "id_especialidad", insertable = false, updatable = false)
+    private Integer idEspecialidad;
+
+    @Column(name = "id_departamento", insertable = false, updatable = false)
+    private Integer idDepartamento;
+
+    @Column(name = "id_categoria", insertable = false, updatable = false)
+    private Integer idCategoria;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_cargo", nullable = false)
     @JsonIgnore

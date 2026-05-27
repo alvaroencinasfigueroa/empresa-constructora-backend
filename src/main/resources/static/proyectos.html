@@ -50,6 +50,7 @@ textarea { resize:vertical; min-height:60px; }
 .toast { position:fixed; bottom:24px; right:24px; background:#1a3a5c; color:white; padding:12px 20px; border-radius:8px; font-size:13px; display:none; z-index:999; }
 .toast.error { background:#c0392b; }
 .toast.show { display:block; }
+.loading { text-align:center; padding:20px; color:#666; }
 </style>
 </head>
 <body>
@@ -73,9 +74,9 @@ textarea { resize:vertical; min-height:60px; }
 
     <table>
         <thead>
-        <tr><th>#</th><th>Nombre</th><th>Ciudad</th><th>Inicio</th><th>Fin Estimado</th><th>Presupuesto (Bs.)</th><th>Avance</th><th>Estado</th><th>Acciones</th></tr>
+        <tr><th>#</th><th>Nombre</th><th>Cliente</th><th>Ciudad</th><th>Inicio</th><th>Fin Estimado</th><th>Presupuesto (Bs.)</th><th>Avance</th><th>Estado</th><th>Acciones</th></tr>
         </thead>
-        <tbody id="tabla"></tbody>
+        <tbody id="tabla"><tr><td colspan="10" class="loading">Cargando proyectos...</td></tr></tbody>
     </table>
 </div>
 
@@ -89,16 +90,16 @@ textarea { resize:vertical; min-height:60px; }
             <input type="hidden" id="editId">
             <div class="form-grid">
                 <div class="form-group full">
-                    <label>Nombre del Proyecto</label>
-                    <input type="text" id="fNombre" placeholder="Ej: Residencial Los Pinos">
+                    <label>Nombre del Proyecto *</label>
+                    <input type="text" id="fNombre" placeholder="Ej: Residencial Los Pinos" required>
                 </div>
                 <div class="form-group full">
                     <label>Descripción</label>
                     <textarea id="fDesc" placeholder="Descripción del proyecto..."></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Cliente</label>
-                    <select id="fCliente"><option value="">Seleccionar...</option></select>
+                    <label>Cliente *</label>
+                    <select id="fCliente" required><option value="">Cargando clientes...</option></select>
                 </div>
                 <div class="form-group">
                     <label>Ciudad</label>
@@ -109,8 +110,8 @@ textarea { resize:vertical; min-height:60px; }
                     <input type="text" id="fDireccion" placeholder="Av. / Calle, zona">
                 </div>
                 <div class="form-group">
-                    <label>Fecha Inicio</label>
-                    <input type="date" id="fInicio">
+                    <label>Fecha Inicio *</label>
+                    <input type="date" id="fInicio" required>
                 </div>
                 <div class="form-group">
                     <label>Fecha Fin Estimada</label>
@@ -122,11 +123,10 @@ textarea { resize:vertical; min-height:60px; }
                 </div>
                 <div class="form-group">
                     <label>% Avance</label>
-                    <input type="number" id="fAvance" min="0" max="100" step="0.01" placeholder="0">
+                    <input type="number" id="fAvance" min="0" max="100" step="0.01" placeholder="0" value="0">
                 </div>
                 <div class="form-group">
                     <label>Estado</label>
-                    <!-- ✅ Valores STRING para coincidir con BD: varchar(255) -->
                     <select id="fEstado">
                         <option value="Planificado">Planificado</option>
                         <option value="En ejecucion">En ejecución</option>
@@ -146,215 +146,352 @@ textarea { resize:vertical; min-height:60px; }
 <div class="toast" id="toast"></div>
 
 <script>
+// ===== CONFIGURACIÓN GLOBAL =====
 const TOKEN = localStorage.getItem('token');
 if (!TOKEN) location.href='/login.html';
+
 const API = 'http://localhost:8080/api';
-const h = { 'Authorization':'Bearer '+TOKEN, 'Content-Type':'application/json' };
+const HEADERS = {
+    'Authorization': 'Bearer ' + TOKEN,
+    'Content-Type': 'application/json'
+};
+
 let todos = [];
+let clientesMap = {}; // { idCliente: { nombre, apellido } }
 
 const params = new URLSearchParams(location.search);
 const clienteParam = params.get('cliente');
 
-// ✅ CORREGIDO: No redirigir automáticamente, dejar que el caller maneje el error
-async function api(url, opts={}) {
-  const r = await fetch(API+url, {headers:h, ...opts});
-  return r; // ← El caller decide qué hacer con 401/403/400
+// ===== FUNCIONES BASE =====
+
+async function api(url, opts = {}) {
+    const r = await fetch(API + url, { headers: HEADERS, ...opts });
+    return r; // ← El caller decide qué hacer con el error
 }
 
-function toast(msg, err=false) {
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.className='toast show'+(err?' error':'');
-  setTimeout(()=>t.className='toast',3000);
+function toast(msg, err = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (err ? ' error' : '');
+    setTimeout(() => t.className = 'toast', 3000);
 }
 
-function fmt(n) { return n ? Number(n).toLocaleString('es-BO') : '-'; }
+function fmt(n) {
+    return n ? Number(n).toLocaleString('es-BO') : '-';
+}
+
+function getNombreCliente(idCliente) {
+    if (!idCliente) return '-';
+    const c = clientesMap[idCliente];
+    if (!c) return `ID: ${idCliente}`;
+    return `${c.nombre} ${c.apellido || ''}`.trim() || `ID: ${idCliente}`;
+}
+
+// ===== CARGA DE DATOS =====
+
+async function cargarClientesMapa() {
+    try {
+        const r = await api('/clientes');
+        if (!r.ok) return;
+        const data = await r.json();
+        data.forEach(c => {
+            clientesMap[c.idCliente] = {
+                nombre: c.nombre || '',
+                apellido: c.apellido || ''
+            };
+        });
+    } catch (e) {
+        console.warn('No se pudo cargar el mapa de clientes:', e);
+    }
+}
 
 async function cargar() {
-  const url = clienteParam ? '/proyectos/cliente/'+clienteParam : '/proyectos';
-  const r = await api(url);
+    const tbody = document.getElementById('tabla');
+    tbody.innerHTML = '<tr><td colspan="10" class="loading">Cargando proyectos...</td></tr>';
 
-  if (!r.ok) {
-      if (r.status===401||r.status===403) { localStorage.clear(); location.href='/login.html'; return; }
-      const errText = await r.text();
-      console.error('Error al cargar proyectos:', errText);
-      toast('Error al cargar datos', true);
-      return;
-  }
+    try {
+        const url = clienteParam ? '/proyectos/cliente/' + clienteParam : '/proyectos';
+        const r = await api(url);
 
-  todos = await r.json();
-  renderizar(todos);
+        if (!r.ok) {
+            if (r.status === 401 || r.status === 403) {
+                localStorage.clear();
+                location.href = '/login.html';
+                return;
+            }
+            const errText = await r.text();
+            console.error('Error al cargar proyectos:', errText);
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:20px;color:#c0392b">Error: ${errText || 'No se pudieron cargar los proyectos'}</td></tr>`;
+            return;
+        }
+
+        todos = await r.json();
+        renderizar(todos);
+
+    } catch (e) {
+        console.error('Error de red:', e);
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:#c0392b">Error de conexión con el servidor</td></tr>';
+    }
 }
 
+// ===== RENDERIZADO =====
+
 function renderizar(data) {
-  const tbody = document.getElementById('tabla');
-  if (!data.length) { tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:30px;color:#888">Sin proyectos registrados</td></tr>'; return; }
+    const tbody = document.getElementById('tabla');
 
-  tbody.innerHTML = data.map(p => {
-    // ✅ CORREGIDO: Manejar estado como STRING
-    const est = (p.estado || '').toLowerCase();
-    const badge = est.includes('ejecuc') ? 'ejecucion'
-                : est.includes('finaliz') ? 'finalizado'
-                : est.includes('suspend') ? 'suspendido'
-                : 'planificado';
+    if (!data || !data.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px;color:#888">Sin proyectos registrados</td></tr>';
+        return;
+    }
 
-    const avance = p.porcentajeAvance || 0;
-    return `
-    <tr>
-      <td>${p.idProyecto}</td>
-      <td><strong>${p.nombre}</strong></td>
-      <td>${p.ciudad||'-'}</td>
-      <td>${p.fechaInicio}</td>
-      <td>${p.fechaFinEstimada||'-'}</td>
-      <td>Bs. ${fmt(p.presupuestoAprobado)}</td>
-      <td>
-        <div class="barra-fondo"><div class="barra-avance" style="width:${Math.min(avance,100)}%"></div></div>
-        <small>${avance}%</small>
-      </td>
-      <td><span class="badge badge-${badge}">${p.estado}</span></td>
-      <td>
-        <button class="btn-sm btn-contract" onclick="verContratos(${p.idProyecto})">Contrato</button>
-        <button class="btn-sm btn-edit" onclick="abrirEditar(${p.idProyecto})">Editar</button>
-        <button class="btn-sm btn-del" onclick="eliminar(${p.idProyecto})">Eliminar</button>
-      </td>
-    </tr>`;
-  }).join('');
+    tbody.innerHTML = data.map(p => {
+        // Badge de estado
+        const est = (p.estado || '').toLowerCase();
+        const badge = est.includes('ejecuc') ? 'ejecucion'
+                    : est.includes('finaliz') ? 'finalizado'
+                    : est.includes('suspend') ? 'suspendido'
+                    : 'planificado';
+
+        const avance = p.porcentajeAvance || 0;
+        const nombreCliente = getNombreCliente(p.idCliente);
+
+        return `
+        <tr>
+          <td><strong>${p.idProyecto}</strong></td>
+          <td><strong>${p.nombre || '-'}</strong></td>
+          <td>${nombreCliente}</td>
+          <td>${p.ciudad || '-'}</td>
+          <td>${p.fechaInicio || '-'}</td>
+          <td>${p.fechaFinEstimada || '-'}</td>
+          <td>Bs. ${fmt(p.presupuestoAprobado)}</td>
+          <td>
+            <div class="barra-fondo" style="display:inline-block;vertical-align:middle;margin-right:5px">
+                <div class="barra-avance" style="width:${Math.min(avance,100)}%"></div>
+            </div>
+            <small style="vertical-align:middle">${avance}%</small>
+          </td>
+          <td><span class="badge badge-${badge}">${p.estado || '-'}</span></td>
+          <td>
+            <button class="btn-sm btn-contract" onclick="verContratos(${p.idProyecto})">Contrato</button>
+            <button class="btn-sm btn-edit" onclick="abrirEditar(${p.idProyecto})">Editar</button>
+            <button class="btn-sm btn-del" onclick="eliminar(${p.idProyecto})">Eliminar</button>
+          </td>
+        </tr>`;
+    }).join('');
 }
 
 function filtrar() {
-  const q = document.getElementById('busqueda').value.toLowerCase();
-  renderizar(todos.filter(p => (p.nombre+' '+p.ciudad+' '+p.estado).toLowerCase().includes(q)));
+    const q = document.getElementById('busqueda').value.toLowerCase();
+    const filtrados = todos.filter(p => {
+        const clienteTexto = getNombreCliente(p.idCliente).toLowerCase();
+        return (p.nombre + ' ' + p.ciudad + ' ' + p.estado + ' ' + clienteTexto).toLowerCase().includes(q);
+    });
+    renderizar(filtrados);
 }
 
-async function cargarClientes() {
-  const r = await api('/clientes');
-  if (!r.ok) {
-      if (r.status===401||r.status===403) { localStorage.clear(); location.href='/login.html'; return; }
-      return;
-  }
-  const data = await r.json();
-  const sel = document.getElementById('fCliente');
-  data.forEach(c => sel.innerHTML += `<option value="${c.idCliente}">${c.nombre}${c.apellido?' '+c.apellido:''}</option>`);
+// ===== MODAL Y FORMULARIO =====
+
+async function cargarClientesSelect() {
+    const select = document.getElementById('fCliente');
+    select.innerHTML = '<option value="">Cargando...</option>';
+
+    try {
+        const r = await api('/clientes');
+        if (!r.ok) {
+            select.innerHTML = '<option value="">Error al cargar</option>';
+            return;
+        }
+        const data = await r.json();
+
+        select.innerHTML = '<option value="">Seleccionar cliente...</option>';
+        data.forEach(c => {
+            const texto = `${c.nombre || ''} ${c.apellido || ''}`.trim() || `Cliente #${c.idCliente}`;
+            select.innerHTML += `<option value="${c.idCliente}">${texto}</option>`;
+        });
+    } catch (e) {
+        select.innerHTML = '<option value="">Error de red</option>';
+        console.warn('Error cargando clientes para select:', e);
+    }
 }
 
 function abrirModal() {
-  document.getElementById('editId').value='';
-  document.getElementById('modal-titulo').textContent='Nuevo Proyecto';
-  ['fNombre','fDesc','fCiudad','fDireccion'].forEach(id=>document.getElementById(id).value='');
-  ['fInicio','fFin'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('fPresupuesto').value='';
-  document.getElementById('fAvance').value='0';
-  document.getElementById('fEstado').value='Planificado'; // ✅ Default string
-  document.getElementById('fCliente').value='';
-  document.getElementById('overlay').classList.add('open');
+    document.getElementById('editId').value = '';
+    document.getElementById('modal-titulo').textContent = 'Nuevo Proyecto';
+
+    // Limpiar campos
+    document.getElementById('fNombre').value = '';
+    document.getElementById('fDesc').value = '';
+    document.getElementById('fCiudad').value = '';
+    document.getElementById('fDireccion').value = '';
+    document.getElementById('fInicio').value = '';
+    document.getElementById('fFin').value = '';
+    document.getElementById('fPresupuesto').value = '';
+    document.getElementById('fAvance').value = '0';
+    document.getElementById('fEstado').value = 'Planificado';
+    document.getElementById('fCliente').value = '';
+
+    // Cargar clientes si está vacío
+    if (document.getElementById('fCliente').options.length <= 1) {
+        cargarClientesSelect();
+    }
+
+    document.getElementById('overlay').classList.add('open');
 }
 
-function cerrarModal() { document.getElementById('overlay').classList.remove('open'); }
+function cerrarModal() {
+    document.getElementById('overlay').classList.remove('open');
+}
 
 async function abrirEditar(id) {
-  const r = await api('/proyectos/'+id);
+    // Cargar clientes primero si es necesario
+    if (document.getElementById('fCliente').options.length <= 1) {
+        await cargarClientesSelect();
+    }
 
-  if (!r.ok) {
-      if (r.status===401||r.status===403) { localStorage.clear(); location.href='/login.html'; return; }
-      const err = await r.text();
-      toast('Error: '+err, true);
-      return;
-  }
+    try {
+        const r = await api('/proyectos/' + id);
 
-  const p = await r.json();
-  document.getElementById('editId').value=p.idProyecto;
-  document.getElementById('modal-titulo').textContent='Editar Proyecto';
-  document.getElementById('fNombre').value=p.nombre||'';
-  document.getElementById('fDesc').value=p.descripcion||'';
-  document.getElementById('fCiudad').value=p.ciudad||'';
-  document.getElementById('fDireccion').value=p.direccionObra||'';
-  document.getElementById('fInicio').value=p.fechaInicio||'';
-  document.getElementById('fFin').value=p.fechaFinEstimada||'';
-  document.getElementById('fPresupuesto').value=p.presupuestoAprobado||'';
-  document.getElementById('fAvance').value=p.porcentajeAvance||0;
+        if (!r.ok) {
+            if (r.status === 401 || r.status === 403) {
+                localStorage.clear();
+                location.href = '/login.html';
+                return;
+            }
+            const err = await r.text();
+            toast('Error: ' + err, true);
+            return;
+        }
 
-  // ✅ CORREGIDO: Asignar valor string directamente al select
-  document.getElementById('fEstado').value = p.estado || 'Planificado';
+        const p = await r.json();
 
-  // ✅ CORREGIDO: Preseleccionar el cliente si existe
-  if (p.cliente && p.cliente.idCliente) {
-      document.getElementById('fCliente').value = p.cliente.idCliente;
-  }
+        document.getElementById('editId').value = p.idProyecto;
+        document.getElementById('modal-titulo').textContent = 'Editar Proyecto';
+        document.getElementById('fNombre').value = p.nombre || '';
+        document.getElementById('fDesc').value = p.descripcion || '';
+        document.getElementById('fCiudad').value = p.ciudad || '';
+        document.getElementById('fDireccion').value = p.direccionObra || '';
+        document.getElementById('fInicio').value = p.fechaInicio || '';
+        document.getElementById('fFin').value = p.fechaFinEstimada || '';
+        document.getElementById('fPresupuesto').value = p.presupuestoAprobado || '';
+        document.getElementById('fAvance').value = p.porcentajeAvance || 0;
+        document.getElementById('fEstado').value = p.estado || 'Planificado';
 
-  document.getElementById('overlay').classList.add('open');
+        // Seleccionar cliente si existe
+        if (p.idCliente) {
+            document.getElementById('fCliente').value = p.idCliente;
+        }
+
+        document.getElementById('overlay').classList.add('open');
+
+    } catch (e) {
+        console.error('Error al cargar proyecto:', e);
+        toast('Error al cargar datos del proyecto', true);
+    }
 }
 
 async function guardar() {
-  const id = document.getElementById('editId').value;
-  const idCliente = document.getElementById('fCliente').value;
+    const id = document.getElementById('editId').value;
+    const idCliente = document.getElementById('fCliente').value;
+    console.log('idCliente seleccionado:', idCliente); // ← temporal
 
-  // ✅ CORREGIDO: Enviar estado como STRING, no boolean
-  const body = {
+    // Validaciones
+    const nombre = document.getElementById('fNombre').value.trim();
+    const fechaInicio = document.getElementById('fInicio').value;
+
+    if (!nombre) return toast('El nombre del proyecto es requerido', true);
+    if (!fechaInicio) return toast('La fecha de inicio es requerida', true);
+    if (!idCliente) return toast('Debe seleccionar un cliente', true);
+
+    // ✅ CORRECTO: Enviar objeto con solo idCliente
+const body = {
     nombre: document.getElementById('fNombre').value,
-    descripcion: document.getElementById('fDesc').value||null,
-    ciudad: document.getElementById('fCiudad').value,
-    direccionObra: document.getElementById('fDireccion').value,
+    descripcion: document.getElementById('fDesc').value || null,
+    ciudad: document.getElementById('fCiudad').value || null,
+    direccionObra: document.getElementById('fDireccion').value || null,
     fechaInicio: document.getElementById('fInicio').value,
-    fechaFinEstimada: document.getElementById('fFin').value||null,
-    presupuestoAprobado: +document.getElementById('fPresupuesto').value||null,
-    porcentajeAvance: +document.getElementById('fAvance').value||0,
-    estado: document.getElementById('fEstado').value,  // ✅ String directo: "Planificado", "En ejecucion", etc.
-    cliente: idCliente ? { idCliente: +idCliente } : null
-  };
+    fechaFinEstimada: document.getElementById('fFin').value || null,
+    presupuestoAprobado: document.getElementById('fPresupuesto').value ? +document.getElementById('fPresupuesto').value : null,
+    porcentajeAvance: document.getElementById('fAvance').value ? +document.getElementById('fAvance').value : 0,
+    estado: document.getElementById('fEstado').value,
+    // ✅ Enviar SOLO el ID del cliente como objeto mínimo
+    cliente: { idCliente: +idCliente }
+};
 
-  if (!body.nombre||!body.fechaInicio) return toast('Nombre y fecha de inicio son requeridos', true);
-  if (!body.cliente || !body.cliente.idCliente) return toast('Debe seleccionar un cliente', true);
+    const url = id ? '/proyectos/' + id : '/proyectos';
+    const method = id ? 'PUT' : 'POST';
 
-  const url = id ? '/proyectos/'+id : '/proyectos';
-  const method = id ? 'PUT' : 'POST';
+    try {
+        const r = await api(url, { method, body: JSON.stringify(body) });
 
-  try {
-    const r = await api(url, {method, body:JSON.stringify(body)});
+        if (!r.ok) {
+            const errorText = await r.text();
+            console.error(`Error ${r.status}:`, errorText);
 
-    // ✅ CORREGIDO: Manejo inteligente de respuestas
-    if (!r.ok) {
-        const errorText = await r.text();
-        console.error(`Error ${r.status}:`, errorText);
-
-        // Solo redirigir si es error de autenticación real
-        if (r.status === 401 || r.status === 403) {
-            localStorage.clear();
-            location.href='/login.html';
-            return;
+            // Solo redirigir si es error de autenticación
+            if (r.status === 401 || r.status === 403) {
+                localStorage.clear();
+                location.href = '/login.html';
+                return;
+            }
+            // Para errores de validación (400), mostrar mensaje
+            return toast(errorText || 'Error al guardar proyecto', true);
         }
-        // Para errores de validación (400), mostrar mensaje al usuario
-        return toast(errorText || 'Error al guardar proyecto', true);
+
+        // Éxito
+        cerrarModal();
+        toast(id ? '✅ Proyecto actualizado' : '✅ Proyecto creado');
+        cargar();  // Recargar tabla
+
+    } catch (err) {
+        console.error('Error de red:', err);
+        toast('❌ Error de conexión con el servidor', true);
     }
-
-    // Éxito
-    cerrarModal();
-    toast(id ? 'Proyecto actualizado' : 'Proyecto creado');
-    cargar();
-
-  } catch (err) {
-    console.error('Error de red:', err);
-    toast('Error de conexión con el servidor', true);
-  }
 }
 
 async function eliminar(id) {
-  if (!confirm('¿Eliminar este proyecto?')) return;
-  const r = await api('/proyectos/'+id, {method:'DELETE'});
+    if (!confirm('¿Estás seguro de eliminar este proyecto?\n\nEsta acción no se puede deshacer.')) return;
 
-  if (!r.ok) {
-      if (r.status===401||r.status===403) { localStorage.clear(); location.href='/login.html'; return; }
-      const err = await r.text();
-      return toast(err || 'No se puede eliminar', true);
-  }
+    try {
+        const r = await api('/proyectos/' + id, { method: 'DELETE' });
 
-  toast('Proyecto eliminado');
-  cargar();
+        if (!r.ok) {
+            if (r.status === 401 || r.status === 403) {
+                localStorage.clear();
+                location.href = '/login.html';
+                return;
+            }
+            const err = await r.text();
+            return toast(err || 'No se puede eliminar (tiene contratos o empleados asociados)', true);
+        }
+
+        toast('✅ Proyecto eliminado');
+        cargar();
+
+    } catch (e) {
+        console.error('Error al eliminar:', e);
+        toast('❌ Error de conexión', true);
+    }
 }
 
-function verContratos(id) { location.href='/contratos.html?proyecto='+id; }
+function verContratos(id) {
+    location.href = '/contratos.html?proyecto=' + id;
+}
 
-// Inicialización
-cargar();
-cargarClientes();
+// ===== INICIALIZACIÓN =====
+
+async function init() {
+    // Cargar mapa de clientes para mostrar nombres en la tabla
+    await cargarClientesMapa();
+
+    // Cargar clientes para el select del modal
+    await cargarClientesSelect();
+
+    // Cargar proyectos
+    await cargar();
+}
+
+// Ejecutar al cargar la página
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>

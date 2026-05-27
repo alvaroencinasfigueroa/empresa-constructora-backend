@@ -216,6 +216,7 @@ async function abrirEditar(id) {
   document.getElementById('fFecha').value=e.fechaContratacion||'';
   document.getElementById('fSalario').value=e.salarioBase||'';
   document.getElementById('fEstado').value=String(e.estado);
+  document.getElementById('fCargo').value=e.idCargo||'';  // ← esta línea
   document.getElementById('overlay').classList.add('open');
 }
 
@@ -230,14 +231,14 @@ async function guardar() {
     fechaContratacion: document.getElementById('fFecha').value,
     salarioBase: +document.getElementById('fSalario').value,
     estado: document.getElementById('fEstado').value === 'true',
-    cargo: { idCargo: +document.getElementById('fCargo').value }
+    cargo: document.getElementById('fCargo').value ? { idCargo: +document.getElementById('fCargo').value } : null
   };
   if (!body.nombre||!body.fechaContratacion) return toast('Nombre y fecha son requeridos', true);
   const url = id ? '/empleados/'+id : '/empleados';
   const method = id ? 'PUT' : 'POST';
   const r = await api(url, {method, body:JSON.stringify(body)});
   if (r.ok) { cerrarModal(); toast(id?'Empleado actualizado':'Empleado creado'); cargar(); }
-  else { const e=await r.json(); toast(e.message||'Error al guardar', true); }
+  else { const msg=await r.text(); toast(msg||'Error al guardar', true); }
 }
 
 async function eliminar(id) {
