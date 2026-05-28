@@ -2,9 +2,12 @@ package bo.constructora.backend.service;
 
 import bo.constructora.backend.entity.Material;
 import bo.constructora.backend.repository.MaterialRepository;
+import bo.constructora.backend.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 
 @Service
@@ -12,6 +15,15 @@ import java.util.List;
 public class MaterialService {
 
     private final MaterialRepository repo;
+    private final UsuarioRepository usuarioRepo;
+    private final BitacoraService bitacora;
+
+    private Integer getIdUsuarioActual() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return usuarioRepo.findByUsername(username)
+                .map(u -> u.getIdUsuario())
+                .orElse(null);
+    }
 
     public List<Material> listarTodos() {
         return repo.findAll();
@@ -28,7 +40,14 @@ public class MaterialService {
 
     @Transactional
     public Material guardar(Material m) {
-        return repo.save(m);
+        boolean esNuevo = (m.getIdMaterial() == null);
+        Material guardado = repo.save(m);
+        String accion = esNuevo ? "CREAR" : "ACTUALIZAR";
+        bitacora.registrar(getIdUsuarioActual(), accion, "materiales",
+                "Material " + accion.toLowerCase() + ": id=" + guardado.getIdMaterial()
+                        + ", nombre=" + guardado.getNombre()
+                        + ", unidad=" + guardado.getUnidad());
+        return guardado;
     }
 
     @Transactional
@@ -38,12 +57,17 @@ public class MaterialService {
         existente.setUnidad(m.getUnidad());
         existente.setDescripcion(m.getDescripcion());
         existente.setPrecioRef(m.getPrecioRef());
-        return repo.save(existente);
+        Material guardado = repo.save(existente);
+        bitacora.registrar(getIdUsuarioActual(), "ACTUALIZAR", "materiales",
+                "Material actualizado: id=" + id + ", nombre=" + guardado.getNombre());
+        return guardado;
     }
 
     @Transactional
     public void eliminar(Integer id) {
-        obtenerPorId(id); // valida que existe
+        Material m = obtenerPorId(id);
         repo.deleteById(id);
+        bitacora.registrar(getIdUsuarioActual(), "ELIMINAR", "materiales",
+                "Material eliminado: id=" + id + ", nombre=" + m.getNombre());
     }
 }

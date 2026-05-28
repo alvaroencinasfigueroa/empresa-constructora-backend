@@ -4,6 +4,7 @@ import bo.constructora.backend.dto.PagosDTO.*;
 import bo.constructora.backend.entity.*;
 import bo.constructora.backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,8 +20,16 @@ public class ContratoService {
     private final ClienteRepository clienteRepo;
     private final ProyectoRepository proyectoRepo;
     private final TipoContratoRepository tipoContratoRepo;
+    private final UsuarioRepository usuarioRepo;
+    private final BitacoraService bitacora;
 
-    // ── Crear contrato ───────────────────────────────────────────────────────
+    private Integer getIdUsuarioActual() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return usuarioRepo.findByUsername(username)
+                .map(u -> u.getIdUsuario())
+                .orElse(null);
+    }
+
     @Transactional
     public ContratoResponse crear(ContratoRequest req) {
         Contrato c = new Contrato();
@@ -42,10 +51,15 @@ public class ContratoService {
             proyectoRepo.save(proyecto);
         }
 
-        return toResponse(contratoRepo.save(c), BigDecimal.ZERO);
+        ContratoResponse response = toResponse(contratoRepo.save(c), BigDecimal.ZERO);
+        bitacora.registrar(getIdUsuarioActual(), "CREAR", "contratos",
+                "Contrato creado: id=" + response.getIdContrato()
+                        + ", cliente=" + req.getIdCliente()
+                        + ", proyecto=" + req.getIdProyecto()
+                        + ", monto=" + req.getMontoTotal());
+        return response;
     }
 
-    // ── Listar todos ─────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public List<ContratoResponse> listarTodos() {
         return contratoRepo.findAllConFetch().stream()
@@ -53,7 +67,6 @@ public class ContratoService {
                 .collect(Collectors.toList());
     }
 
-    // ── Listar por cliente ───────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public List<ContratoResponse> listarPorCliente(Integer idCliente) {
         return contratoRepo.findByClienteConFetch(idCliente).stream()
@@ -61,7 +74,6 @@ public class ContratoService {
                 .collect(Collectors.toList());
     }
 
-    // ── Obtener por id ───────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public ContratoResponse obtenerPorId(Integer id) {
         Contrato c = contratoRepo.findById(id)
@@ -69,15 +81,18 @@ public class ContratoService {
         return toResponse(c, contratoRepo.sumPagosConfirmados(id));
     }
 
-    // ── Cambiar estado ───────────────────────────────────────────────────────
     @Transactional
     public ContratoResponse cambiarEstado(Integer id, String nuevoEstado) {
         Contrato c = contratoRepo.findById(id).orElseThrow();
+        String estadoAnterior = c.getEstado();
         c.setEstado(nuevoEstado);
-        return toResponse(contratoRepo.save(c), contratoRepo.sumPagosConfirmados(id));
+        ContratoResponse response = toResponse(contratoRepo.save(c), contratoRepo.sumPagosConfirmados(id));
+        bitacora.registrar(getIdUsuarioActual(), "ACTUALIZAR", "contratos",
+                "Estado de contrato cambiado: id=" + id
+                        + ", de=" + estadoAnterior + ", a=" + nuevoEstado);
+        return response;
     }
 
-    // ── Mapper ───────────────────────────────────────────────────────────────
     public ContratoResponse toResponse(Contrato c, BigDecimal montoPagado) {
         ContratoResponse r = new ContratoResponse();
         r.setIdContrato(c.getIdContrato());

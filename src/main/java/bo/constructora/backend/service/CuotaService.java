@@ -5,6 +5,7 @@ import bo.constructora.backend.entity.*;
 import bo.constructora.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,8 +22,20 @@ public class CuotaService {
 
     private final CuotaPagoRepository cuotaRepo;
     private final ContratoRepository contratoRepo;
+    private final UsuarioRepository usuarioRepo;
+    private final BitacoraService bitacora;
 
-    // ── Generar plan de cuotas para un contrato ──────────────────────────────
+    private Integer getIdUsuarioActual() {
+        try {
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            return usuarioRepo.findByUsername(username)
+                    .map(u -> u.getIdUsuario())
+                    .orElse(null);
+        } catch (Exception e) {
+            return null; // puede ser null en contexto de scheduler
+        }
+    }
+
     @Transactional
     public List<CuotaResponse> generarPlan(GenerarCuotasRequest req) {
         Contrato contrato = contratoRepo.findById(req.getIdContrato())
@@ -53,55 +66,59 @@ public class CuotaService {
             vencimiento = vencimiento.plusDays(req.getDiasEntreCuotas());
         }
 
-        return cuotaRepo.saveAll(cuotas).stream()
+        List<CuotaResponse> resultado = cuotaRepo.saveAll(cuotas).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+
+        bitacora.registrar(getIdUsuarioActual(), "CREAR", "cuotas_pago",
+                "Plan de cuotas generado: contrato=" + req.getIdContrato()
+                        + ", cuotas=" + n + ", total=" + total);
+        return resultado;
     }
 
-    // ── Listar cuotas de un contrato ─────────────────────────────────────────
     @Transactional(readOnly = true)
     public List<CuotaResponse> listarPorContrato(Integer idContrato) {
         return cuotaRepo.findByContrato_IdContratoOrderByNumeroCuota(idContrato)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    // ── Obtener una cuota ────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public CuotaResponse obtenerPorId(Integer id) {
         return toResponse(cuotaRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Cuota no encontrada: " + id)));
     }
 
-    // ── Actualizar monto o fecha ─────────────────────────────────────────────
     @Transactional
     public CuotaResponse actualizar(Integer id, CuotaResponse req) {
         CuotaPago c = cuotaRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Cuota no encontrada: " + id));
         if (req.getMontoEsperado() != null) c.setMontoEsperado(req.getMontoEsperado());
         if (req.getFechaVencimiento() != null) c.setFechaVencimiento(req.getFechaVencimiento());
-        return toResponse(cuotaRepo.save(c));
+        CuotaResponse resultado = toResponse(cuotaRepo.save(c));
+        bitacora.registrar(getIdUsuarioActual(), "ACTUALIZAR", "cuotas_pago",
+                "Cuota actualizada: id=" + id
+                        + ", contrato=" + c.getContrato().getIdContrato()
+                        + ", cuota#=" + c.getNumeroCuota());
+        return resultado;
     }
 
-    // ── Eliminar plan completo de un contrato ────────────────────────────────
     @Transactional
     public void eliminarPlan(Integer idContrato) {
-        List<CuotaPago> cuotas = cuotaRepo
-                .findByContrato_IdContratoOrderByNumeroCuota(idContrato);
-        boolean tienePagadas = cuotas.stream()
-                .anyMatch(c -> "Pagado".equals(c.getEstado()));
+        List<CuotaPago> cuotas = cuotaRepo.findByContrato_IdContratoOrderByNumeroCuota(idContrato);
+        boolean tienePagadas = cuotas.stream().anyMatch(c -> "Pagado".equals(c.getEstado()));
         if (tienePagadas) {
-            throw new IllegalStateException(
-                    "No se puede eliminar el plan: existen cuotas ya pagadas.");
+            throw new IllegalStateException("No se puede eliminar el plan: existen cuotas ya pagadas.");
         }
         cuotaRepo.deleteAll(cuotas);
+        bitacora.registrar(getIdUsuarioActual(), "ELIMINAR", "cuotas_pago",
+                "Plan de cuotas eliminado: contrato=" + idContrato
+                        + ", cuotas eliminadas=" + cuotas.size());
     }
 
-    // ── Resumen financiero ───────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public ResumenFinancieroResponse resumen(Integer idContrato) {
         Contrato contrato = contratoRepo.findById(idContrato).orElseThrow();
-        List<CuotaPago> cuotas = cuotaRepo
-                .findByContrato_IdContratoOrderByNumeroCuota(idContrato);
+        List<CuotaPago> cuotas = cuotaRepo.findByContrato_IdContratoOrderByNumeroCuota(idContrato);
         BigDecimal montoPagado = contratoRepo.sumPagosConfirmados(idContrato);
 
         ResumenFinancieroResponse r = new ResumenFinancieroResponse();
@@ -116,15 +133,17 @@ public class CuotaService {
         return r;
     }
 
-    // ── Job automático: marcar cuotas vencidas cada día a medianoche ─────────
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
     public void marcarCuotasVencidas() {
         int actualizadas = cuotaRepo.marcarVencidas();
         System.out.println("[Scheduler] Cuotas marcadas como vencidas: " + actualizadas);
+        if (actualizadas > 0) {
+            bitacora.registrar(null, "SCHEDULER", "cuotas_pago",
+                    "Cuotas marcadas automáticamente como vencidas: " + actualizadas);
+        }
     }
 
-    // ── Mapper ───────────────────────────────────────────────────────────────
     public CuotaResponse toResponse(CuotaPago c) {
         CuotaResponse r = new CuotaResponse();
         r.setIdCuota(c.getIdCuota());

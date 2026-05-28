@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Bitácora - Empresa Constructora</title>
+    <style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:Arial,sans-serif; background:#f4f6f8; }
+header { background:#1a3a5c; color:white; padding:16px 32px; display:flex; justify-content:space-between; align-items:center; }
+header h1 { font-size:18px; }
+.nav-links a { color:#aac4e0; text-decoration:none; margin-left:16px; font-size:13px; }
+.nav-links a:hover { color:white; }
+.container { padding:24px 32px; }
+.top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:10px; flex-wrap:wrap; }
+h2 { color:#1a3a5c; font-size:20px; }
+.filters { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.search { padding:9px 14px; border:1px solid #ccc; border-radius:7px; font-size:13px; width:220px; }
+select.search { width:180px; }
+.btn { padding:9px 18px; border:none; border-radius:7px; font-size:13px; font-weight:bold; cursor:pointer; }
+.btn-primary { background:#1a3a5c; color:white; }
+.btn-primary:hover { background:#2a5a8c; }
+.btn-secondary { background:#e2e8f0; color:#1a3a5c; }
+.btn-secondary:hover { background:#cbd5e1; }
+table { width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+thead { background:#1a3a5c; color:white; }
+th,td { padding:11px 14px; text-align:left; font-size:13px; }
+tr:nth-child(even) { background:#f0f4f8; }
+tr:hover { background:#dce8f5; }
+.badge { padding:3px 10px; border-radius:12px; font-size:11px; font-weight:bold; }
+.badge-crear    { background:#d4edda; color:#155724; }
+.badge-actualizar { background:#d0e8ff; color:#1a3a5c; }
+.badge-eliminar { background:#f8d7da; color:#721c24; }
+.badge-scheduler { background:#fff3cd; color:#856404; }
+.badge-default  { background:#e2e8f0; color:#555; }
+.detalle { max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#555; font-size:12px; }
+.pagination { display:flex; justify-content:center; align-items:center; gap:10px; margin-top:20px; font-size:13px; color:#555; }
+.page-btn { padding:6px 14px; border:1px solid #ccc; border-radius:6px; background:white; cursor:pointer; font-size:13px; }
+.page-btn:hover { background:#dce8f5; }
+.page-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.toast { position:fixed; bottom:24px; right:24px; background:#1a3a5c; color:white; padding:12px 20px; border-radius:8px; font-size:13px; display:none; z-index:999; }
+.toast.error { background:#c0392b; }
+.toast.show { display:block; }
+.stats { display:flex; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
+.stat-card { background:white; border-radius:8px; padding:14px 20px; box-shadow:0 2px 8px rgba(0,0,0,.08); min-width:130px; text-align:center; }
+.stat-card .num { font-size:28px; font-weight:bold; color:#1a3a5c; }
+.stat-card .lbl { font-size:11px; color:#888; text-transform:uppercase; margin-top:2px; }
+.empty { text-align:center; padding:40px; color:#888; font-size:14px; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>🏗️ Empresa Constructora</h1>
+    <div class="nav-links">
+        <a href="/index.html">← Dashboard</a>
+        <span id="usuarioHeader" style="color:#aac4e0;margin-left:16px;font-size:13px;"></span>
+    </div>
+</header>
+
+<div class="container">
+    <div class="top-bar">
+        <h2>📋 Bitácora de Actividad</h2>
+        <div class="filters">
+            <input class="search" type="text" id="busqueda" placeholder="Buscar en detalle..." oninput="filtrarLocal()">
+            <select class="search" id="filtroAccion" onchange="filtrarLocal()">
+                <option value="">Todas las acciones</option>
+                <option value="CREAR">Crear</option>
+                <option value="ACTUALIZAR">Actualizar</option>
+                <option value="ELIMINAR">Eliminar</option>
+                <option value="SCHEDULER">Scheduler</option>
+            </select>
+            <select class="search" id="filtroTabla" onchange="filtrarLocal()">
+                <option value="">Todas las tablas</option>
+                <option value="proyectos">Proyectos</option>
+                <option value="empleados">Empleados</option>
+                <option value="contratos">Contratos</option>
+                <option value="cuotas_pago">Cuotas</option>
+                <option value="materiales">Materiales</option>
+                <option value="maquinaria">Maquinaria</option>
+                <option value="asignacion_maquinaria">Asig. Maquinaria</option>
+                <option value="clientes">Clientes</option>
+                <option value="pagos">Pagos</option>
+                <option value="usuarios">Usuarios</option>
+            </select>
+            <input class="search" type="number" id="limiteInput" value="100" min="10" max="500" style="width:90px;" title="Límite de registros">
+            <button class="btn btn-primary" onclick="cargar()">🔄 Recargar</button>
+        </div>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card"><div class="num" id="statTotal">-</div><div class="lbl">Total</div></div>
+        <div class="stat-card"><div class="num" id="statCrear" style="color:#155724">-</div><div class="lbl">Creaciones</div></div>
+        <div class="stat-card"><div class="num" id="statActualizar" style="color:#1a3a5c">-</div><div class="lbl">Actualizaciones</div></div>
+        <div class="stat-card"><div class="num" id="statEliminar" style="color:#721c24">-</div><div class="lbl">Eliminaciones</div></div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Fecha y Hora</th>
+                <th>Usuario</th>
+                <th>Acción</th>
+                <th>Tabla</th>
+                <th>Detalle</th>
+            </tr>
+        </thead>
+        <tbody id="tabla"></tbody>
+    </table>
+
+    <div class="pagination">
+        <button class="page-btn" id="btnAnterior" onclick="paginaAnterior()">← Anterior</button>
+        <span id="infoPagina">Página 1</span>
+        <button class="page-btn" id="btnSiguiente" onclick="paginaSiguiente()">Siguiente →</button>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API     = 'http://localhost:8080/api';
+const TOKEN   = localStorage.getItem('token');
+const HEADERS = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN };
+
+let todos      = [];   // todos los logs cargados
+let filtrados  = [];   // después de filtros locales
+let pagina     = 1;
+const POR_PAG  = 20;
+
+// Redirigir si no hay token o no es admin
+if (!TOKEN) { location.href = '/login.html'; }
+
+document.getElementById('usuarioHeader').textContent =
+    localStorage.getItem('nombreUsuario') || localStorage.getItem('username') || '';
+
+async function cargar() {
+    const limite = document.getElementById('limiteInput').value || 100;
+    try {
+        const r = await fetch(`${API}/bitacora?limite=${limite}`, { headers: HEADERS });
+        if (r.status === 401 || r.status === 403) { location.href = '/login.html'; return; }
+        todos = await r.json();
+        pagina = 1;
+        filtrarLocal();
+        actualizarStats();
+    } catch (e) {
+        toast('❌ Error al cargar bitácora', true);
+    }
+}
+
+function filtrarLocal() {
+    const texto   = document.getElementById('busqueda').value.toLowerCase();
+    const accion  = document.getElementById('filtroAccion').value;
+    const tabla   = document.getElementById('filtroTabla').value;
+
+    filtrados = todos.filter(log => {
+        const coincideTexto  = !texto  || (log.detalle || '').toLowerCase().includes(texto);
+        const coincideAccion = !accion || log.accion === accion;
+        const coincideTabla  = !tabla  || log.tablaAfectada === tabla;
+        return coincideTexto && coincideAccion && coincideTabla;
+    });
+
+    pagina = 1;
+    renderTabla();
+    actualizarPaginacion();
+}
+
+function renderTabla() {
+    const tbody = document.getElementById('tabla');
+    const inicio = (pagina - 1) * POR_PAG;
+    const pagina_datos = filtrados.slice(inicio, inicio + POR_PAG);
+
+    if (filtrados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">No hay registros que coincidan.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = pagina_datos.map((log, i) => `
+        <tr>
+            <td style="color:#888;font-size:11px">${log.idLog}</td>
+            <td style="white-space:nowrap">${formatFecha(log.fechaHora)}</td>
+            <td>${log.idUsuario != null ? 'Usuario #' + log.idUsuario : '<span style="color:#aaa">Sistema</span>'}</td>
+            <td><span class="badge ${badgeClass(log.accion)}">${log.accion}</span></td>
+            <td style="font-family:monospace;font-size:12px;color:#555">${log.tablaAfectada || '-'}</td>
+            <td class="detalle" title="${escHtml(log.detalle || '')}">${escHtml(log.detalle || '-')}</td>
+        </tr>
+    `).join('');
+}
+
+function actualizarStats() {
+    document.getElementById('statTotal').textContent      = todos.length;
+    document.getElementById('statCrear').textContent      = todos.filter(l => l.accion === 'CREAR').length;
+    document.getElementById('statActualizar').textContent = todos.filter(l => l.accion === 'ACTUALIZAR').length;
+    document.getElementById('statEliminar').textContent   = todos.filter(l => l.accion === 'ELIMINAR').length;
+}
+
+function actualizarPaginacion() {
+    const totalPags = Math.max(1, Math.ceil(filtrados.length / POR_PAG));
+    document.getElementById('infoPagina').textContent = `Página ${pagina} de ${totalPags} (${filtrados.length} registros)`;
+    document.getElementById('btnAnterior').disabled  = pagina <= 1;
+    document.getElementById('btnSiguiente').disabled = pagina >= totalPags;
+}
+
+function paginaAnterior() { if (pagina > 1) { pagina--; renderTabla(); actualizarPaginacion(); } }
+function paginaSiguiente() {
+    const totalPags = Math.ceil(filtrados.length / POR_PAG);
+    if (pagina < totalPags) { pagina++; renderTabla(); actualizarPaginacion(); }
+}
+
+function badgeClass(accion) {
+    const map = { CREAR: 'badge-crear', ACTUALIZAR: 'badge-actualizar', ELIMINAR: 'badge-eliminar', SCHEDULER: 'badge-scheduler' };
+    return map[accion] || 'badge-default';
+}
+
+function formatFecha(fechaHora) {
+    if (!fechaHora) return '-';
+    const d = new Date(fechaHora);
+    return d.toLocaleDateString('es-BO') + ' ' + d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg, err = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (err ? ' error' : '');
+    setTimeout(() => t.className = 'toast', 3000);
+}
+
+cargar();
+</script>
+</body>
+</html>

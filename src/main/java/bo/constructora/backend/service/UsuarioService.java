@@ -5,6 +5,7 @@ import bo.constructora.backend.entity.*;
 import bo.constructora.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,18 @@ public class UsuarioService implements UserDetailsService {
     private final EmpleadoRepository empleadoRepo;
     private final RolUsuarioRepository rolUsuarioRepo;
     private final PasswordEncoder passwordEncoder;
+    private final BitacoraService bitacora;
+
+    private Integer getIdUsuarioActual() {
+        try {
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            return usuarioRepo.findByUsername(username)
+                    .map(u -> u.getIdUsuario())
+                    .orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     @Override
     @Transactional
@@ -37,7 +50,6 @@ public class UsuarioService implements UserDetailsService {
     @Transactional
     public Usuario findByUsername(String username) {
         Usuario u = usuarioRepo.findByUsername(username).orElseThrow();
-        // forzar carga de todas las relaciones lazy que usa el AuthController
         u.getRol().getNombre();
         if (u.getEmpleado() != null) {
             u.getEmpleado().getNombre();
@@ -64,5 +76,22 @@ public class UsuarioService implements UserDetailsService {
         u.setRol(rol);
         u.setEstado(true);
         usuarioRepo.save(u);
+
+        bitacora.registrar(getIdUsuarioActual(), "CREAR", "usuarios",
+                "Usuario empleado creado: username=" + req.getUsername()
+                        + ", empleado=" + req.getIdEmpleado()
+                        + ", rol=" + rol.getNombre());
+    }
+
+    @Transactional
+    public void cambiarEstado(Integer idUsuario, boolean nuevoEstado) {
+        Usuario u = usuarioRepo.findById(idUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + idUsuario));
+        u.setEstado(nuevoEstado);
+        usuarioRepo.save(u);
+        bitacora.registrar(getIdUsuarioActual(), "ACTUALIZAR", "usuarios",
+                "Estado de usuario cambiado: id=" + idUsuario
+                        + ", username=" + u.getUsername()
+                        + ", activo=" + nuevoEstado);
     }
 }

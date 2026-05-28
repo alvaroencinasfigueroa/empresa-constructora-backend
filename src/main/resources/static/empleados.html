@@ -231,8 +231,8 @@ async function guardar() {
     fechaContratacion: document.getElementById('fFecha').value,
     salarioBase: +document.getElementById('fSalario').value,
     estado: document.getElementById('fEstado').value === 'true',
-    cargo: document.getElementById('fCargo').value ? { idCargo: +document.getElementById('fCargo').value } : null
-  };
+    id_cargo: +document.getElementById('fCargo').value || null
+};
   if (!body.nombre||!body.fechaContratacion) return toast('Nombre y fecha son requeridos', true);
   const url = id ? '/empleados/'+id : '/empleados';
   const method = id ? 'PUT' : 'POST';

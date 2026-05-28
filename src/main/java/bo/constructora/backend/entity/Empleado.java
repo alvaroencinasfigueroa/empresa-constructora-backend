@@ -2,6 +2,7 @@ package bo.constructora.backend.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -43,15 +44,19 @@ public class Empleado {
     private Boolean estado;
 
     // IDs planos de solo lectura para el frontend
+    @JsonProperty("id_cargo")
     @Column(name = "id_cargo", insertable = false, updatable = false)
     private Integer idCargo;
 
+    @JsonProperty("id_especialidad")
     @Column(name = "id_especialidad", insertable = false, updatable = false)
     private Integer idEspecialidad;
 
+    @JsonProperty("id_departamento")
     @Column(name = "id_departamento", insertable = false, updatable = false)
     private Integer idDepartamento;
 
+    @JsonProperty("id_categoria")
     @Column(name = "id_categoria", insertable = false, updatable = false)
     private Integer idCategoria;
 
