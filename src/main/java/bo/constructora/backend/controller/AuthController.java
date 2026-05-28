@@ -46,7 +46,9 @@ public class AuthController {
             );
 
             Usuario u2 = usuarioService.findByUsername(body.get("username"));
-            String token = jwtUtil.generateToken(u2.getUsername(), u2.getRol().getNombre());
+            //String token = jwtUtil.generateToken(u2.getUsername(), u2.getRol().getNombre());
+            Integer idCliente = u2.getCliente() != null ? u2.getCliente().getIdCliente() : null;
+            String token = jwtUtil.generateToken(u2.getUsername(), u2.getRol().getNombre(), idCliente);
 
             // Construir el nombre completo según el tipo de usuario
             String nombreCompleto = "";
@@ -63,8 +65,10 @@ public class AuthController {
                     "token", token,
                     "username", u2.getUsername(),
                     "rol", u2.getRol().getNombre(),
-                    "nombre", nombreCompleto
+                    "nombre", nombreCompleto,
+                    "idCliente", idCliente != null ? idCliente : 0
             ));
+
         } catch (AuthenticationException e) {
             System.out.println(">>> ERROR de autenticación: " + e.getClass().getName());
             System.out.println(">>> Mensaje: " + e.getMessage());

@@ -50,4 +50,19 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody();
     }
+
+    public String generateToken(String username, String rol, Integer idCliente) {
+        return Jwts.builder()
+                .setSubject(username)
+                .claim("rol", rol)
+                .claim("idCliente", idCliente)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
+                .signWith(getKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public Integer extractIdCliente(String token) {
+        return getClaims(token).get("idCliente", Integer.class);
+    }
 }
