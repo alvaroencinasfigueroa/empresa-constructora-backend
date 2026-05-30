@@ -65,7 +65,8 @@ input,select { padding:9px 11px; border:1px solid #ccc; border-radius:6px; font-
 
     <table>
         <thead>
-        <tr><th>#</th><th>Nombre Completo</th><th>CI</th><th>Teléfono</th><th>Email</th><th>Contratación</th><th>Salario (Bs.)</th><th>Estado</th><th>Acciones</th></tr>
+        <!-- CAMBIO: se agregó columna Cargo -->
+        <tr><th>#</th><th>Nombre Completo</th><th>CI</th><th>Cargo</th><th>Teléfono</th><th>Email</th><th>Contratación</th><th>Salario (Bs.)</th><th>Estado</th><th>Acciones</th></tr>
         </thead>
         <tbody id="tabla"></tbody>
     </table>
@@ -109,7 +110,8 @@ input,select { padding:9px 11px; border:1px solid #ccc; border-radius:6px; font-
                     <input type="number" id="fSalario" step="0.01" placeholder="0.00">
                 </div>
                 <div class="form-group">
-                    <label>Cargo (ID)</label>
+                    <label>Cargo</label>
+                    <!-- CAMBIO: el select se llena desde el API, no hardcodeado -->
                     <select id="fCargo"></select>
                 </div>
                 <div class="form-group">
@@ -157,12 +159,17 @@ async function cargar() {
 
 function renderizar(data) {
   const tbody = document.getElementById('tabla');
-  if (!data.length) { tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:30px;color:#888">Sin empleados registrados</td></tr>'; return; }
+  if (!data.length) {
+    tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:30px;color:#888">Sin empleados registrados</td></tr>';
+    return;
+  }
+  // CAMBIO: se agregó e.nombre_cargo en la fila, y colspan corregido a 10
   tbody.innerHTML = data.map(e => `
     <tr>
       <td>${e.idEmpleado}</td>
       <td><strong>${e.nombre} ${e.apellido||''}</strong></td>
       <td>${e.ci||'-'}</td>
+      <td>${e.nombre_cargo||'-'}</td>
       <td>${e.telefono||'-'}</td>
       <td>${e.email||'-'}</td>
       <td>${e.fechaContratacion}</td>
@@ -180,16 +187,20 @@ function filtrar() {
   renderizar(todos.filter(e => (e.nombre+' '+e.apellido+' '+e.ci).toLowerCase().includes(q)));
 }
 
+// CAMBIO: cargos desde el API, filtrando nombres duplicados de la BD
 async function cargarCargos() {
-  // Cargos estáticos conocidos del sistema
-  const cargos = [
-    {idCargo:1,nombre:'Ingeniero Civil'},{idCargo:2,nombre:'Arquitecto'},
-    {idCargo:3,nombre:'Técnico'},{idCargo:4,nombre:'Administrativo'},
-    {idCargo:5,nombre:'Director de Obra'},{idCargo:6,nombre:'Albañil'},
-    {idCargo:8,nombre:'Topógrafo'},
-  ];
+  const r = await api('/cargos');
+  const cargos = await r.json();
   const sel = document.getElementById('fCargo');
-  cargos.forEach(c => sel.innerHTML += `<option value="${c.idCargo}">${c.nombre}</option>`);
+  sel.innerHTML = '<option value="">-- Seleccionar cargo --</option>';
+  const vistos = new Set();
+  cargos
+    .filter(c => {
+      if (vistos.has(c.nombre)) return false;
+      vistos.add(c.nombre);
+      return true;
+    })
+    .forEach(c => sel.innerHTML += `<option value="${c.idCargo}">${c.nombre}</option>`);
 }
 
 function abrirModal() {
@@ -198,6 +209,7 @@ function abrirModal() {
   ['fNombre','fApellido','fCi','fTelefono','fEmail','fSalario'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fFecha').value=new Date().toISOString().split('T')[0];
   document.getElementById('fEstado').value='true';
+  document.getElementById('fCargo').value='';
   document.getElementById('overlay').classList.add('open');
 }
 
@@ -216,7 +228,7 @@ async function abrirEditar(id) {
   document.getElementById('fFecha').value=e.fechaContratacion||'';
   document.getElementById('fSalario').value=e.salarioBase||'';
   document.getElementById('fEstado').value=String(e.estado);
-  document.getElementById('fCargo').value=e.idCargo||'';  // ← esta línea
+  document.getElementById('fCargo').value=e.id_cargo||'';
   document.getElementById('overlay').classList.add('open');
 }
 
@@ -232,8 +244,9 @@ async function guardar() {
     salarioBase: +document.getElementById('fSalario').value,
     estado: document.getElementById('fEstado').value === 'true',
     id_cargo: +document.getElementById('fCargo').value || null
-};
+  };
   if (!body.nombre||!body.fechaContratacion) return toast('Nombre y fecha son requeridos', true);
+  if (!body.id_cargo) return toast('El cargo es requerido', true);
   const url = id ? '/empleados/'+id : '/empleados';
   const method = id ? 'PUT' : 'POST';
   const r = await api(url, {method, body:JSON.stringify(body)});

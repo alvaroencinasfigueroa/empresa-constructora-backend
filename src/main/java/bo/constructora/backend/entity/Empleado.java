@@ -79,4 +79,14 @@ public class Empleado {
     @JoinColumn(name = "id_categoria")
     @JsonIgnore
     private CategoriaEmpleado categoria;
+
+    @JsonProperty("nombre_cargo")
+    @Transient
+    public String getNombreCargo() {
+        try {
+            return cargo != null ? cargo.getNombre() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }
