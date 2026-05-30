@@ -42,13 +42,18 @@ public class MaterialService {
     public Material guardar(Material m) {
         boolean esNuevo = (m.getIdMaterial() == null);
 
-        // Validar nombre duplicado
         List<Material> existentes = repo.findByNombreContainingIgnoreCase(m.getNombre());
         boolean duplicado = existentes.stream().anyMatch(e ->
                 e.getNombre().equalsIgnoreCase(m.getNombre()) &&
+                        java.util.Objects.equals(
+                                e.getEspecificacion() == null ? "" : e.getEspecificacion().trim().toLowerCase(),
+                                m.getEspecificacion() == null ? "" : m.getEspecificacion().trim().toLowerCase()
+                        ) &&
                         !e.getIdMaterial().equals(m.getIdMaterial() == null ? -1 : m.getIdMaterial())
         );
-        if (duplicado) throw new IllegalArgumentException("Ya existe un material con el nombre: " + m.getNombre());
+        if (duplicado) throw new IllegalArgumentException(
+                "Ya existe '" + m.getNombre() + (m.getEspecificacion() != null ? " - " + m.getEspecificacion() : "") + "'"
+        );
 
         Material guardado = repo.save(m);
         String accion = esNuevo ? "CREAR" : "ACTUALIZAR";
@@ -61,19 +66,26 @@ public class MaterialService {
 
     @Transactional
     public Material actualizar(Integer id, Material m) {
-        // Validar nombre duplicado excluyendo el propio
+
         List<Material> existentes = repo.findByNombreContainingIgnoreCase(m.getNombre());
         boolean duplicado = existentes.stream().anyMatch(e ->
-                e.getNombre().equalsIgnoreCase(m.getNombre()) && !e.getIdMaterial().equals(id)
+                e.getNombre().equalsIgnoreCase(m.getNombre()) &&
+                        java.util.Objects.equals(
+                                e.getEspecificacion() == null ? "" : e.getEspecificacion().trim().toLowerCase(),
+                                m.getEspecificacion() == null ? "" : m.getEspecificacion().trim().toLowerCase()
+                        ) &&
+                        !e.getIdMaterial().equals(id)
         );
-        if (duplicado) throw new IllegalArgumentException("Ya existe un material con el nombre: " + m.getNombre());
+        if (duplicado) throw new IllegalArgumentException(
+                "Ya existe '" + m.getNombre() + (m.getEspecificacion() != null ? " - " + m.getEspecificacion() : "") + "'"
+        );
 
         Material existente = obtenerPorId(id);
         existente.setNombre(m.getNombre());
         existente.setUnidad(m.getUnidad());
         existente.setDescripcion(m.getDescripcion());
         existente.setPrecioRef(m.getPrecioRef());
-        existente.setEspecificacion(m.getEspecificacion()); // ← nuevo
+        existente.setEspecificacion(m.getEspecificacion());
         Material guardado = repo.save(existente);
         bitacora.registrar(getIdUsuarioActual(), "ACTUALIZAR", "materiales",
                 "Material actualizado: id=" + id + ", nombre=" + guardado.getNombre());
