@@ -33,14 +33,22 @@ public class MaterialController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','LOGISTICA')")
-    public ResponseEntity<Material> crear(@RequestBody Material m) {
-        return ResponseEntity.ok(service.guardar(m));
+    public ResponseEntity<?> crear(@RequestBody Material m) {
+        try {
+            return ResponseEntity.ok(service.guardar(m));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','LOGISTICA')")
-    public ResponseEntity<Material> actualizar(@PathVariable Integer id, @RequestBody Material m) {
-        return ResponseEntity.ok(service.actualizar(id, m));
+    public ResponseEntity<?> actualizar(@PathVariable Integer id, @RequestBody Material m) {
+        try {
+            return ResponseEntity.ok(service.actualizar(id, m));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+        }
     }
 
     @DeleteMapping("/{id}")

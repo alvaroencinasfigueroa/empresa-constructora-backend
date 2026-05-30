@@ -27,4 +27,7 @@ public class Material {
 
     @Column(name = "precio_ref")
     private BigDecimal precioRef;
+
+    @Column(name = "especificacion")
+    private String especificacion;
 }

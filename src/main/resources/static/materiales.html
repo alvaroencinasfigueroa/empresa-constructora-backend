@@ -62,7 +62,8 @@ input,select { padding:9px 11px; border:1px solid #ccc; border-radius:6px; font-
 
     <table>
         <thead>
-        <tr><th>#</th><th>Nombre</th><th>Unidad</th><th>Descripción</th><th>Precio Ref. (Bs.)</th><th>Acciones</th></tr>
+        <!-- columna Especificación agregada -->
+        <tr><th>#</th><th>Nombre</th><th>Especificación</th><th>Unidad</th><th>Descripción</th><th>Precio Ref. (Bs.)</th><th>Acciones</th></tr>
         </thead>
         <tbody id="tabla"></tbody>
     </table>
@@ -80,6 +81,11 @@ input,select { padding:9px 11px; border:1px solid #ccc; border-radius:6px; font-
                 <div class="form-group full">
                     <label>Nombre</label>
                     <input type="text" id="fNombre" placeholder="Ej: Cemento Portland">
+                </div>
+                <!-- campo Especificación agregado -->
+                <div class="form-group full">
+                    <label>Especificación</label>
+                    <input type="text" id="fEspecificacion" placeholder="Ej: Hueco 6x12x24, Gambote, 2 pulgadas...">
                 </div>
                 <div class="form-group">
                     <label>Unidad</label>
@@ -132,13 +138,15 @@ async function cargar() {
 function renderizar(data) {
     const tbody = document.getElementById('tabla');
     if (!data.length) {
-        tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:30px;color:#888">Sin materiales registrados</td></tr>';
+        tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:30px;color:#888">Sin materiales registrados</td></tr>';
         return;
     }
+    // columna especificacion agregada, colspan corregido a 7
     tbody.innerHTML = data.map(m => `
         <tr>
             <td>${m.idMaterial}</td>
             <td><strong>${m.nombre}</strong></td>
+            <td>${m.especificacion||'-'}</td>
             <td>${m.unidad||'-'}</td>
             <td>${m.descripcion||'-'}</td>
             <td>${m.precioRef ? Number(m.precioRef).toLocaleString('es-BO', {minimumFractionDigits:2}) : '-'}</td>
@@ -149,17 +157,19 @@ function renderizar(data) {
         </tr>`).join('');
 }
 
+// filtrar incluye especificacion
 function filtrar() {
     const q = document.getElementById('busqueda').value.toLowerCase();
     renderizar(todos.filter(m =>
-        (m.nombre+' '+(m.unidad||'')+' '+(m.descripcion||'')).toLowerCase().includes(q)
+        (m.nombre+' '+(m.especificacion||'')+' '+(m.unidad||'')+' '+(m.descripcion||'')).toLowerCase().includes(q)
     ));
 }
 
 function abrirModal() {
     document.getElementById('editId').value='';
     document.getElementById('modal-titulo').textContent='Nuevo Material';
-    ['fNombre','fUnidad','fPrecio','fDescripcion'].forEach(id=>document.getElementById(id).value='');
+    // fEspecificacion agregado al reset
+    ['fNombre','fEspecificacion','fUnidad','fPrecio','fDescripcion'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('overlay').classList.add('open');
 }
 
@@ -171,6 +181,7 @@ async function abrirEditar(id) {
     document.getElementById('editId').value=m.idMaterial;
     document.getElementById('modal-titulo').textContent='Editar Material';
     document.getElementById('fNombre').value=m.nombre||'';
+    document.getElementById('fEspecificacion').value=m.especificacion||''; // nuevo
     document.getElementById('fUnidad').value=m.unidad||'';
     document.getElementById('fPrecio').value=m.precioRef||'';
     document.getElementById('fDescripcion').value=m.descripcion||'';
@@ -181,6 +192,7 @@ async function guardar() {
     const id = document.getElementById('editId').value;
     const body = {
         nombre: document.getElementById('fNombre').value,
+        especificacion: document.getElementById('fEspecificacion').value || null, // nuevo
         unidad: document.getElementById('fUnidad').value,
         precioRef: +document.getElementById('fPrecio').value || null,
         descripcion: document.getElementById('fDescripcion').value
